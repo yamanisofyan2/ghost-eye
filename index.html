@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GhostEye - Compiler Threat Intelligence SIEM</title>
+    <!-- Google Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet.js Map CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Background glow elements -->
+    <div class="glow-bg-1"></div>
+    <div class="glow-bg-2"></div>
+
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="header-logo">
+                <i class="fa-solid fa-terminal shield-icon"></i>
+                <div>
+                    <h1>GHOSTEYE-SIEM</h1>
+                    <p class="subtitle">Compiler-Level Threat Intelligence & Telemetry Dashboard</p>
+                </div>
+            </div>
+            <div class="system-status">
+                <span class="pulse-indicator"></span>
+                <span>SYSTEM ACTIVE</span>
+            </div>
+        </header>
+
+        <!-- Stats Widgets Grid -->
+        <section class="stats-grid">
+            <div class="stat-card" id="widget-total">
+                <div class="stat-icon-wrapper blue">
+                    <i class="fa-solid fa-code-commit"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-label">Jumlah Kompilasi</span>
+                    <h2 class="stat-value" id="stats-total-compiles">0</h2>
+                </div>
+            </div>
+            <div class="stat-card" id="widget-critical">
+                <div class="stat-icon-wrapper red">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-label">Alert Critical & High</span>
+                    <h2 class="stat-value text-red" id="stats-critical-alerts">0</h2>
+                </div>
+            </div>
+            <div class="stat-card" id="widget-countries">
+                <div class="stat-icon-wrapper orange">
+                    <i class="fa-solid fa-earth-americas"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-label">Negara Dikesan</span>
+                    <h2 class="stat-value" id="stats-active-countries">0</h2>
+                </div>
+            </div>
+            <div class="stat-card" id="widget-offline">
+                <div class="stat-icon-wrapper purple">
+                    <i class="fa-solid fa-cloud-arrow-down"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-label font-small">Log Disegerak (Offline)</span>
+                    <h2 class="stat-value" id="stats-synced-logs">0</h2>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Workspace Grid -->
+        <div class="main-grid">
+            
+            <!-- Left Side: Maps & Charts -->
+            <div class="left-column">
+                
+                <!-- Map Card -->
+                <div class="panel-card map-panel">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-map-location-dot"></i> Peta Telemetri Kompilasi Global (GeoIP)</h3>
+                        <span class="card-tag">Real-Time</span>
+                    </div>
+                    <div class="map-container-wrapper">
+                        <div id="map"></div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="charts-row">
+                    <!-- Threat Chart -->
+                    <div class="panel-card chart-card">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-chart-pie"></i> Klasifikasi Ancaman</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="threatChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Trend Chart -->
+                    <div class="panel-card chart-card">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-chart-line"></i> Trend Aktiviti</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: God Mode & Logs -->
+            <div class="right-column">
+                
+                <!-- God Mode Panel -->
+                <div class="panel-card god-panel">
+                    <div class="card-header border-gold">
+                        <h3><i class="fa-solid fa-wand-magic-sparkles text-gold"></i> God Mode Control Panel (PoC Simulator)</h3>
+                        <span class="card-tag gold-tag">GOD MODE</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="god-desc">Gunakan panel ini untuk mensimulasikan telemetry kompilasi dari pelbagai pelusuk dunia secara serta-merta tanpa perlu menulis kod.</p>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="god-country">Simulasi Negara</label>
+                                <select id="god-country">
+                                    <option value="auto">Auto (Guna IP Sebenar)</option>
+                                    <option value="Malaysia">Malaysia 🇲🇾</option>
+                                    <option value="Russia">Russia 🇷🇺</option>
+                                    <option value="China">China 🇨🇳</option>
+                                    <option value="United States">United States 🇺🇸</option>
+                                    <option value="North Korea">North Korea 🇰🇵</option>
+                                    <option value="Germany">Germany 🇩🇪</option>
+                                    <option value="Iran">Iran 🇮🇷</option>
+                                    <option value="Brazil">Brazil 🇧🇷</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="god-threat">Tahap Ancaman</label>
+                                <select id="god-threat">
+                                    <option value="INFO">INFO (Biasa)</option>
+                                    <option value="LOW">LOW</option>
+                                    <option value="MEDIUM">MEDIUM</option>
+                                    <option value="HIGH">HIGH (Bahaya)</option>
+                                    <option value="CRITICAL">CRITICAL (Kritikal)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="god-filename">Nama Fail Kod</label>
+                                <input type="text" id="god-filename" value="malware_injector.cpp">
+                            </div>
+                            <div class="form-group">
+                                <label for="god-status">Status Kompilasi</label>
+                                <select id="god-status">
+                                    <option value="SUCCESS">SUCCESS</option>
+                                    <option value="FAILED">FAILED</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="btn-group">
+                            <button id="btn-trigger-single" class="btn btn-primary">
+                                <i class="fa-solid fa-paper-plane"></i> Hantar Log Tunggal
+                            </button>
+                            <button id="btn-trigger-bulk" class="btn btn-gold">
+                                <i class="fa-solid fa-bolt"></i> Simulasi Pukal (10 Log)
+                            </button>
+                        </div>
+
+                        <div class="danger-zone">
+                            <button id="btn-reset-db" class="btn btn-danger">
+                                <i class="fa-solid fa-trash-can"></i> Kosongkan Database SIEM
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Logs Feed Card -->
+                <div class="panel-card logs-panel">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-list-check"></i> Aliran Log Telemetri Terkini</h3>
+                        <span class="refresh-indicator" id="refresh-indicator">
+                            <i class="fa-solid fa-arrows-rotate fa-spin"></i> Memantau...
+                        </span>
+                    </div>
+                    <div class="logs-container">
+                        <table class="logs-table">
+                            <thead>
+                                <tr>
+                                    <th>Masa</th>
+                                    <th>Maklumat Fail</th>
+                                    <th>Sistem Pembina</th>
+                                    <th>IP / Negara</th>
+                                    <th>Ancaman</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logs-tbody">
+                                <!-- Logs injected by JS -->
+                                <tr class="no-logs-row">
+                                    <td colspan="5" class="text-center">Tiada log diterima lagi. Klik Compile pada Ejen atau guna God Mode!</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Leaflet.js Map Library -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Chart.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="dashboard.js"></script>
+</body>
+</html>
