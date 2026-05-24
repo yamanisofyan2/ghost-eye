@@ -185,7 +185,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         // Build table row HTML
                         const timeStr = formatDate(log.timestamp);
                         const sizeKb = (log.filesize / 1024).toFixed(1) + " KB";
-                        const offlineTag = log.is_offline_log ? `<span class="sync-badge"><i class="fa-solid fa-cloud-arrow-down"></i> SYNCED</span>` : '';
+                        const syncedLabel = currentLang === 'en' ? 'SYNCED' : 'DISEGERAK';
+                        const offlineTag = log.is_offline_log ? `<span class="sync-badge"><i class="fa-solid fa-cloud-arrow-down"></i> ${syncedLabel}</span>` : '';
                         
                         tableHtml += `
                             <tr>
@@ -388,7 +389,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Refresh dashboard immediately
                 await fetchStatsAndLogs();
             } else {
-                alert("Failed to send mock telemetry.");
+                alert(translations[currentLang]["alert-failed-send"]);
             }
         } catch (e) {
             console.error(e);
@@ -400,7 +401,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("btn-trigger-bulk").addEventListener("click", () => {
         const btn = document.getElementById("btn-trigger-bulk");
         btn.disabled = true;
-        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Simulating...`;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${translations[currentLang]["btn-bulk-simulating"]}`;
 
         let count = 0;
         const total = 10;
@@ -408,7 +409,7 @@ document.addEventListener("DOMContentLoaded", () => {
         function sendMockLog() {
             if (count >= total) {
                 btn.disabled = false;
-                btn.innerHTML = `<i class="fa-solid fa-bolt"></i> Bulk Simulation (10 Logs)`;
+                btn.innerHTML = `<i class="fa-solid fa-bolt"></i> <span data-i18n="btn-bulk">${translations[currentLang]["btn-bulk"]}</span>`;
                 return;
             }
 
@@ -474,13 +475,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Reset Database
     document.getElementById("btn-reset-db").addEventListener("click", async () => {
-        if (confirm("Are you sure you want to clear all logs from the SIEM database?")) {
+        if (confirm(translations[currentLang]["confirm-clear"])) {
             try {
                 const res = await fetch("/api/reset", { method: "POST" });
                 if (res.ok) {
                     await fetchStatsAndLogs();
                 } else {
-                    alert("Failed to clear database.");
+                    alert(translations[currentLang]["alert-failed-clear"]);
                 }
             } catch (e) {
                 alert("Error: " + e.message);
@@ -488,8 +489,114 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // --- 5. INITIAL REFRESH & START POLLING ---
-    fetchStatsAndLogs();
+    // --- 5. BILINGUAL / LOCALIZATION ENGINE ---
+    const translations = {
+        en: {
+            subtitle: "Compiler-Level Threat Intelligence & Telemetry Dashboard",
+            "stats-total": "Total Compilations",
+            "stats-critical": "Critical & High Alerts",
+            "stats-countries": "Countries Detected",
+            "stats-offline": "Synced Logs (Offline)",
+            "map-title": "Global Compilation Telemetry Map (GeoIP)",
+            "threat-title": "Threat Classification",
+            "trend-title": "Activity Trends",
+            "god-title": "God Mode Control Panel (PoC Simulator)",
+            "god-desc": "Use this panel to instantly simulate compiler telemetry from various parts of the world without writing code.",
+            "god-country": "Simulate Country",
+            "god-country-auto": "Auto (Use Real IP)",
+            "god-threat": "Threat Level",
+            "god-threat-info": "INFO (Normal)",
+            "god-threat-high": "HIGH (Danger)",
+            "god-threat-critical": "CRITICAL",
+            "god-filename": "Source File Name",
+            "god-status": "Compilation Status",
+            "btn-single": "Send Single Log",
+            "btn-bulk": "Bulk Simulation (10 Logs)",
+            "btn-reset": "Clear SIEM Database",
+            "table-title": "Recent Telemetry Logs Feed",
+            "table-status": "Monitoring...",
+            "th-time": "Timestamp",
+            "th-file": "File Metadata",
+            "th-sys": "Build System",
+            "th-ip": "IP / Country",
+            "th-threat": "Threat",
+            "no-logs": "No logs received yet. Click Compile on the Agent or use God Mode!",
+            "alert-failed-send": "Failed to send mock telemetry.",
+            "btn-bulk-simulating": "Simulating...",
+            "confirm-clear": "Are you sure you want to clear all logs from the SIEM database?",
+            "alert-failed-clear": "Failed to clear database.",
+            "system-active": "SYSTEM ACTIVE"
+        },
+        bm: {
+            subtitle: "Dashboard Pencerobohan Telemetri & Risik Ancaman Peringkat Kompilator",
+            "stats-total": "Jumlah Kompilasi",
+            "stats-critical": "Alert Kritikal & Tinggi",
+            "stats-countries": "Negara Dikesan",
+            "stats-offline": "Log Disegerak (Offline)",
+            "map-title": "Peta Telemetri Kompilasi Global (GeoIP)",
+            "threat-title": "Klasifikasi Ancaman",
+            "trend-title": "Trend Aktiviti",
+            "god-title": "Panel Kawalan God Mode (Simulator PoC)",
+            "god-desc": "Gunakan panel ini untuk mensimulasikan telemetri kompilasi dari pelbagai pelusuk dunia secara serta-merta tanpa menulis kod.",
+            "god-country": "Simulasi Negara",
+            "god-country-auto": "Auto (Guna IP Sebenar)",
+            "god-threat": "Tahap Ancaman",
+            "god-threat-info": "INFO (Biasa)",
+            "god-threat-high": "HIGH (Bahaya)",
+            "god-threat-critical": "CRITICAL (Kritikal)",
+            "god-filename": "Nama Fail Kod",
+            "god-status": "Status Kompilasi",
+            "btn-single": "Hantar Log Tunggal",
+            "btn-bulk": "Simulasi Pukal (10 Log)",
+            "btn-reset": "Kosongkan Database SIEM",
+            "table-title": "Aliran Log Telemetri Terkini",
+            "table-status": "Memantau...",
+            "th-time": "Masa",
+            "th-file": "Maklumat Fail",
+            "th-sys": "Sistem Pembina",
+            "th-ip": "IP / Negara",
+            "th-threat": "Ancaman",
+            "no-logs": "Tiada log diterima lagi. Klik Compile pada Ejen atau guna God Mode!",
+            "alert-failed-send": "Gagal menghantar mock telemetry.",
+            "btn-bulk-simulating": "Mensimulasikan...",
+            "confirm-clear": "Adakah anda pasti mahu memadam semua log dalam database SIEM?",
+            "alert-failed-clear": "Gagal mengosongkan database.",
+            "system-active": "SISTEM AKTIF"
+        }
+    };
+
+    let currentLang = localStorage.getItem('ghosteye_lang') || 'en';
+
+    function applyLanguage(lang) {
+        document.querySelectorAll("[data-i18n]").forEach(elem => {
+            const key = elem.getAttribute("data-i18n");
+            if (translations[lang] && translations[lang][key]) {
+                elem.textContent = translations[lang][key];
+            }
+        });
+        
+        // Update language label on toggle button
+        const toggleLabel = document.getElementById("lang-label");
+        if (toggleLabel) {
+            toggleLabel.textContent = lang === 'en' ? "English (EN)" : "Bahasa Melayu (BM)";
+        }
+        
+        // Re-fetch stats and logs to update static text placeholders
+        fetchStatsAndLogs();
+    }
+
+    // Toggle button click listener
+    const toggleBtn = document.getElementById("btn-lang-toggle");
+    if (toggleBtn) {
+        toggleBtn.addEventListener("click", () => {
+            currentLang = currentLang === 'en' ? 'bm' : 'en';
+            localStorage.setItem('ghosteye_lang', currentLang);
+            applyLanguage(currentLang);
+        });
+    }
+
+    // --- 6. INITIAL REFRESH & START POLLING ---
+    applyLanguage(currentLang);
     
     // Poll stats and logs every 2 seconds
     setInterval(fetchStatsAndLogs, 2000);

@@ -679,3 +679,31 @@ header h1 {
     70% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(255, 71, 87, 0); }
     100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
 }
+
+/* Language Toggle Button styling */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.btn-lang {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.3s, border-color 0.3s, color 0.3s;
+}
+
+.btn-lang:hover {
+    background: rgba(0, 191, 255, 0.1);
+    border-color: var(--primary);
+    color: var(--primary);
+}
