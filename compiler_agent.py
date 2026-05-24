@@ -448,7 +448,7 @@ class CompilerAgentApp(tk.Tk):
         country_spoof = self.cb_country.get()
         
         payload = {
-            "timestamp": datetime.datetime.now().isoformat(),
+            "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
             "filename": filename,
             "filesize": file_size,
             "filehash_sha256": sha256_hash,

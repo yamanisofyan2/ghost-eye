@@ -153,7 +153,7 @@ async def ingest_telemetry(request: Request, payload: TelemetryPayload):
     ip_to_resolve = payload.mocked_ip if (payload.mocked_ip and payload.mocked_ip.lower() != "auto") else payload.ip
     
     geo = resolve_geoip(ip_to_resolve, payload.mocked_country)
-    received_at = datetime.datetime.now().isoformat()
+    received_at = datetime.datetime.utcnow().isoformat() + "Z"
     
     try:
         conn = sqlite3.connect(DB_PATH)
