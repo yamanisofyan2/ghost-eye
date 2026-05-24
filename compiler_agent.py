@@ -53,28 +53,14 @@ class CompilerAgentApp(tk.Tk):
         super().__init__()
         
         self.title("GHOSTEYE - Mini-IDE & Instrumented Compiler Agent")
-        self.geometry("1000x720")
         self.configure(bg="#0b0e17")  # Cyber dark background
         
         self.network_online = True  # Network state tracker
         self.sync_thread_active = True
+        self.logged_in_user = ""
         
         self.setup_styles()
-        self.build_ui()
-        
-        # Configure console tags for multi-color logs
-        self.setup_console_tags()
-        
-        # Initial C++ Syntax Highlight execution
-        self.highlight_syntax()
-        
-        # Start background thread to sync cached offline logs
-        self.sync_thread = threading.Thread(target=self.background_sync_loop, daemon=True)
-        self.sync_thread.start()
-        
-        self.write_console("[SUCCESS] GhostEye Compiler Agent initialized successfully.", "SUCCESS")
-        self.write_console("[INFO] Ready for code input. Instrumented scanning active.", "INFO")
-        self.update_cache_status()
+        self.show_login_screen()
 
     def setup_styles(self):
         self.font_main = ("Inter", 10)
@@ -94,6 +80,109 @@ class CompilerAgentApp(tk.Tk):
         self.option_add('*TCombobox*Listbox.foreground', '#f1f2f6')
         self.option_add('*TCombobox*Listbox.selectBackground', '#00bfff')
         self.option_add('*TCombobox*Listbox.selectForeground', '#000000')
+
+    def center_window(self, width, height):
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        x = (screen_width // 2) - (width // 2)
+        y = (screen_height // 2) - (height // 2)
+        self.geometry(f"{width}x{height}+{x}+{y}")
+
+    def show_login_screen(self):
+        self.geometry("450x520")
+        self.resizable(False, False)
+        self.center_window(450, 520)
+        
+        self.login_frame = tk.Frame(self, bg="#111625")
+        self.login_frame.pack(fill=tk.BOTH, expand=True, padx=25, pady=25)
+        
+        # Cyber Header Logo
+        lbl_logo = tk.Label(self.login_frame, text="👁️ GHOSTEYE", font=("Inter", 20, "bold"), fg="#ff4757", bg="#111625")
+        lbl_logo.pack(pady=(25, 2))
+        
+        lbl_sub = tk.Label(self.login_frame, text="COMPILER INGESTION AGENT", font=("Inter", 9, "bold"), fg="#a4b0be", bg="#111625")
+        lbl_sub.pack(pady=(0, 20))
+        
+        # Divider
+        divider = tk.Frame(self.login_frame, height=1, bg="#22273a")
+        divider.pack(fill=tk.X, padx=10, pady=5)
+        
+        # Username Field
+        lbl_user = tk.Label(self.login_frame, text="Developer Username", font=self.font_bold, fg="#a4b0be", bg="#111625")
+        lbl_user.pack(anchor=tk.W, padx=25, pady=(15, 2))
+        
+        self.ent_username = tk.Entry(self.login_frame, bg="#1c2237", fg="#f1f2f6", insertbackground="#fff", bd=0, font=self.font_main)
+        self.ent_username.pack(fill=tk.X, padx=25, ipady=8)
+        self.ent_username.insert(0, "sec_developer")
+        
+        # Token Field
+        lbl_token = tk.Label(self.login_frame, text="Security Access Token", font=self.font_bold, fg="#a4b0be", bg="#111625")
+        lbl_token.pack(anchor=tk.W, padx=25, pady=(15, 2))
+        
+        self.ent_token = tk.Entry(self.login_frame, show="*", bg="#1c2237", fg="#f1f2f6", insertbackground="#fff", bd=0, font=self.font_main)
+        self.ent_token.pack(fill=tk.X, padx=25, ipady=8)
+        self.ent_token.insert(0, "gho_secret_auth_token_2026")
+        
+        # Error Label
+        self.lbl_error = tk.Label(self.login_frame, text="", font=("Inter", 9, "bold"), fg="#ff4757", bg="#111625")
+        self.lbl_error.pack(pady=10)
+        
+        # Login Button
+        btn_login = tk.Button(
+            self.login_frame, 
+            text="🔒 UNLOCK COMPILER", 
+            bg="#00bfff", 
+            fg="#000", 
+            font=("Inter", 11, "bold"),
+            relief=tk.FLAT,
+            bd=0,
+            cursor="hand2",
+            command=self.perform_login
+        )
+        btn_login.pack(fill=tk.X, padx=25, pady=(5, 15), ipady=10)
+        
+        # Warning label
+        lbl_warn = tk.Label(
+            self.login_frame, 
+            text="⚠️ WARNING: Unauthorized access is strictly logged.", 
+            font=("Inter", 8), 
+            fg="#ffa502", 
+            bg="#111625"
+        )
+        lbl_warn.pack(side=tk.BOTTOM, pady=10)
+
+    def perform_login(self):
+        username = self.ent_username.get().strip()
+        token = self.ent_token.get().strip()
+        
+        if not username:
+            self.lbl_error.config(text="Username cannot be empty.")
+            return
+            
+        if token != API_TOKEN:
+            self.lbl_error.config(text="Access Denied: Invalid Security Token")
+            return
+            
+        # Success!
+        self.logged_in_user = username
+        self.login_frame.destroy()
+        
+        # Switch to IDE mode
+        self.resizable(True, True)
+        self.geometry("1000x750")
+        self.center_window(1000, 750)
+        
+        self.build_ui()
+        self.setup_console_tags()
+        self.highlight_syntax()
+        
+        # Start background sync thread
+        self.sync_thread = threading.Thread(target=self.background_sync_loop, daemon=True)
+        self.sync_thread.start()
+        
+        self.write_console(f"[SUCCESS] Developer session authenticated. Username: {self.logged_in_user}", "SUCCESS")
+        self.write_console("[INFO] Instrumented compiler agent active.", "INFO")
+        self.update_cache_status()
 
     def build_ui(self):
         # Left Panel (72% Width): Code Editor + Console output
@@ -285,6 +374,23 @@ class CompilerAgentApp(tk.Tk):
         # Bind hover events to button
         self.btn_compile.bind("<Enter>", self.on_btn_hover)
         self.btn_compile.bind("<Leave>", self.on_btn_leave)
+        
+        # Status Bar Frame (Mesra Pengguna)
+        status_bar = tk.Frame(self, bg="#161b2c", height=25)
+        status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+        
+        self.lbl_status_user = tk.Label(status_bar, text=f"👤 Session: {self.logged_in_user}", font=("Inter", 9), fg="#a4b0be", bg="#161b2c")
+        self.lbl_status_user.pack(side=tk.LEFT, padx=15, pady=3)
+        
+        hostname = socket.gethostname()
+        self.lbl_status_host = tk.Label(status_bar, text=f"💻 Host: {hostname}", font=("Inter", 9), fg="#a4b0be", bg="#161b2c")
+        self.lbl_status_host.pack(side=tk.LEFT, padx=15, pady=3)
+        
+        self.lbl_status_token = tk.Label(status_bar, text="🔑 Token: Verified", font=("Inter", 9), fg="#2ed573", bg="#161b2c")
+        self.lbl_status_token.pack(side=tk.LEFT, padx=15, pady=3)
+        
+        self.lbl_status_net = tk.Label(status_bar, text="🌐 Connection: Live Ingestion", font=("Inter", 9), fg="#2ed573", bg="#161b2c")
+        self.lbl_status_net.pack(side=tk.RIGHT, padx=15, pady=3)
 
     def draw_indicator_light(self, color):
         self.net_indicator.delete("all")
@@ -376,12 +482,16 @@ class CompilerAgentApp(tk.Tk):
             self.rb_online.configure(fg="#f1f2f6")
             self.rb_offline.configure(fg="#a4b0be")
             self.write_console("[STATUS] Network state: ONLINE. Live secure telemetry dispatcher active.", "INFO")
+            if hasattr(self, 'lbl_status_net'):
+                self.lbl_status_net.config(text="🌐 Connection: Live Ingestion", fg="#2ed573")
         else:
             self.network_online = False
             self.draw_indicator_light("#ff4757") # Red
             self.rb_online.configure(fg="#a4b0be")
             self.rb_offline.configure(fg="#ff4757")
             self.write_console("[STATUS] Network state: OFFLINE. Offline encrypted local cache active.", "WARN")
+            if hasattr(self, 'lbl_status_net'):
+                self.lbl_status_net.config(text="🔌 Connection: Offline Cached", fg="#ffa502")
 
     def update_cache_status(self):
         if os.path.exists(CACHE_FILE):
@@ -433,7 +543,7 @@ class CompilerAgentApp(tk.Tk):
         self.write_console(f"[SUCCESS] Compile completed. Mock binary generated: dist/{filename.split('.')[0]}.exe", "SUCCESS")
         
         hostname = socket.gethostname()
-        username = getpass.getuser()
+        username = getattr(self, 'logged_in_user', getpass.getuser())
         os_info = f"{platform.system()} {platform.release()} (v{platform.version()})"
         
         ip = "127.0.0.1"
