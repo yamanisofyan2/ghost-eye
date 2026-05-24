@@ -9,17 +9,96 @@ Whenever a developer compiles code, the GhostEye Compiler Agent intercepts the e
 
 ## 🏗️ System Architecture & Workflow
 
-Here is the high-level architecture diagram showing the flow of compiler telemetry from the desktop client, through the FastAPI gateway, to the dark-mode SOC SIEM dashboard:
+GhostEye operates with a decoupled client-server architecture containing dual signature compilation, resilient caching for offline states, token authorization, and real-time visualization.
 
-![GhostEye System Architecture](ghosteye_architecture.png)
+### 📊 System Architecture Diagram
+
+```mermaid
+flowchart TD
+    subgraph Client ["GHOSTEYE COMPILER AGENT (Client-Side Desktop IDE)"]
+        IDE["C++ Source Code Editor"]
+        Compiler["Instrumented Compiler Pipeline"]
+        HashGen["Signature Generator<br>(SHA-256 & MD5)"]
+        NetState{"Network State Toggle?"}
+        
+        %% Online Path
+        OnlinePath["<b>ONLINE PATHWAY</b><br>Token Auth (X-GhostEye-Token)"]
+        HTTPPost["HTTP POST /api/telemetry"]
+        
+        %% Offline Path
+        OfflinePath["<b>OFFLINE PATHWAY</b><br>Local Encrypted Cache"]
+        EncryptXOR["XOR + Base64 Cipher Engine"]
+        CacheFile[("offline_cache.json<br>(Encrypted Logs)")]
+        SyncThread["Background Sync Thread<br>(Auto-Sync on connection restore)"]
+
+        IDE -->|Compile & Telemetry| Compiler
+        Compiler -->|Generate Dual Hashes| HashGen
+        HashGen --> NetState
+        
+        %% Online Routing
+        NetState -->|Online Mode| OnlinePath
+        OnlinePath --> HTTPPost
+        
+        %% Offline Routing
+        NetState -->|Offline Mode| OfflinePath
+        OfflinePath --> EncryptXOR
+        EncryptXOR --> CacheFile
+        SyncThread -.->|Pings API & Decrypts Cache| CacheFile
+        SyncThread -->|Transmits cached logs| HTTPPost
+    end
+
+    subgraph Server ["GHOSTEYE TELEMETRY BACKEND (Python API Gateway)"]
+        API["FastAPI Routing Engine"]
+        TokenAuth{"X-GhostEye-Token Valid?"}
+        GeoIP["GeoIP Resolver<br>(ip-api.com & Local Mock Fallback)"]
+        DB[(SQLite Database<br>telemetry.db)]
+
+        HTTPPost --> API
+        API --> TokenAuth
+        TokenAuth -->|Valid| GeoIP
+        TokenAuth -->|Invalid| HTTP401["HTTP 401 Unauthorized"]
+        GeoIP -->|Ingest Payload with MD5 + SHA-256| DB
+    end
+
+    subgraph SIEM ["GHOSTEYE SOC Dashboard (Web Frontend UI)"]
+        Dashboard["SIEM Analytics Dashboard<br>(Neon Dark Mode / Glassmorphism)"]
+        LeafletMap["Leaflet.js Map<br>(Auto-Fly & Pop-up coordinate locator)"]
+        Charts["Chart.js Indicators<br>(Threat Classifications & Compile Trends)"]
+        Poller["AJAX 2-second Poller"]
+
+        Poller -->|Fetch Logs| API
+        API -->|JSON Telemetry Logs| Poller
+        Poller -->|Update Map Coordinates| LeafletMap
+        Poller -->|Update Visual Metrics| Charts
+        Dashboard --> Poller
+    end
+```
+
+---
+
+### 🔐 Security Architecture Details
+
+#### 1. Dual Hashes Signatures (MD5 & SHA-256)
+During the instrumented compilation process, the source code is passed to two independent hashing algorithms. Both signatures are generated and appended to the telemetry payload:
+* **MD5 Hashing:** Captured via `hashlib.md5()` to maintain legacy compatibility and quick hash lookups in traditional databases.
+* **SHA-256 Hashing:** Captured via `hashlib.sha256()` to offer cryptographic integrity and prevent signature collision attacks.
+
+#### 2. Network Pathways: Online vs. Offline Mode
+
+| Feature / Pathway | 🌐 Online Mode | 🔌 Offline Mode |
+| :--- | :--- | :--- |
+| **Transmission Destination** | Direct transmission to the FastAPI Backend Server. | Local caching in the `offline_cache.json` file. |
+| **Authentication** | Validated via `X-GhostEye-Token` in the HTTP header. | Pre-validated signature; stored securely until connection is restored. |
+| **Data Encryption** | Sent over HTTP (or HTTPS in production). | Cryptographically secured using an **XOR + Base64** cipher engine locally. |
+| **Synchronisation** | Real-time ingest. | A background thread pings the API server and auto-flushes/syncs logs when the network becomes online. |
 
 ### Data Stream Flow:
-1. **Developer Actions:** Developer writes code in the custom C++/Python IDE and clicks **Compile**.
-2. **Telemetry Extraction:** The Compiler Agent immediately captures local timestamps, user account details, system hostname, OS specifications, and scans code for suspicious Win32 API calls.
+1. **Developer Actions:** Developer writes code in the custom C++ IDE and clicks **Compile**.
+2. **Telemetry Extraction:** The Compiler Agent immediately captures local timestamps, user account details, system hostname, OS specifications, and generates dual signatures (MD5 & SHA-256).
 3. **Network Dispatching:** 
    * **If Online:** Dispatches telemetry via a secure HTTP POST JSON payload to the API server.
-   * **If Offline:** Caches payloads locally inside `offline_cache.json` with historical timestamps preserved. Once connection is restored, a sync thread flushes the queue.
-4. **FastAPI Ingestion:** The backend processes client geolocations via GeoIP APIs (with simulated offline fallbacks) and commits records to a local SQLite database.
+   * **If Offline:** Encrypts telemetry via XOR + Base64 and writes it to `offline_cache.json` with historical timestamps preserved. Once connection is restored, a background sync thread automatically flushes the queue.
+4. **FastAPI Ingestion:** The backend verifies the API token, resolves client geolocations via GeoIP APIs (with simulated offline fallbacks), and commits records to a local SQLite database.
 5. **Real-time Monitoring:** The SOC Dashboard pulls logs and updates analytics widgets, panning the Leaflet.js world map to the compile source coordinates and popping details in real-time.
 
 ---

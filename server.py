@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 # Initialize FastAPI app
-app = FastAPI(title="GhostEye SIEM Telemetry Ingestion API", version="2.0.0")
+app = FastAPI(title="GhostEye SIEM Telemetry Ingestion API", version="2.1.0")
 
 # Enable CORS for development
 app.add_middleware(
@@ -29,7 +29,8 @@ class TelemetryPayload(BaseModel):
     timestamp: str  # ISO string or formatted local time of event
     filename: str
     filesize: int
-    filehash: str  # Stores SHA-256 hash (Security Upgrade)
+    filehash_sha256: str  # Security Upgrade: SHA-256 Signature
+    filehash_md5: str     # Security Upgrade: MD5 Signature
     compiler_flags: str
     ip: str
     hostname: str
@@ -42,18 +43,24 @@ class TelemetryPayload(BaseModel):
     mocked_country: Optional[str] = None
     mocked_ip: Optional[str] = None
 
-# Initialize SQLite database
+# Initialize SQLite database (supporting both MD5 and SHA-256)
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    
+    # Drops the table if structure needs update (safe for PoC/FYP reset)
+    # We alter table or drop it to ensure schema matches the new columns
+    cursor.execute("DROP TABLE IF EXISTS telemetry_logs")
+    
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS telemetry_logs (
+        CREATE TABLE telemetry_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp TEXT,
             received_at TEXT,
             filename TEXT,
             filesize INTEGER,
-            filehash TEXT,
+            filehash_sha256 TEXT,
+            filehash_md5 TEXT,
             compiler_flags TEXT,
             ip TEXT,
             country TEXT,
@@ -75,10 +82,6 @@ init_db()
 
 # GeoIP Resolution Helper
 def resolve_geoip(ip_addr: str, mocked_country: Optional[str] = None) -> dict:
-    """
-    Resolve IP address to country, city, lat, lon.
-    If mocked_country is provided (God Mode), use that instead.
-    """
     result = {
         "country": "Unknown",
         "city": "Unknown",
@@ -86,7 +89,6 @@ def resolve_geoip(ip_addr: str, mocked_country: Optional[str] = None) -> dict:
         "longitude": 0.0
     }
     
-    # 1. Check if God Mode country is provided
     if mocked_country and mocked_country.lower() != "auto":
         result["country"] = mocked_country
         coordinates = {
@@ -103,7 +105,6 @@ def resolve_geoip(ip_addr: str, mocked_country: Optional[str] = None) -> dict:
             result.update(coordinates[mocked_country])
         return result
 
-    # 2. Skip local/private IP addresses
     private_prefixes = ["127.", "192.168.", "10.", "172.16.", "172.17.", "172.18.", "172.19.", "172.20.", "172.21.", "172.22.", "172.23.", "172.24.", "172.25.", "172.26.", "172.27.", "172.28.", "172.29.", "172.30.", "172.31."]
     if any(ip_addr.startswith(prefix) for prefix in private_prefixes) or ip_addr == "localhost":
         try:
@@ -125,7 +126,6 @@ def resolve_geoip(ip_addr: str, mocked_country: Optional[str] = None) -> dict:
             "longitude": 101.6869
         }
 
-    # 3. Resolve using external GeoIP API
     try:
         r = requests.get(f"http://ip-api.com/json/{ip_addr}", timeout=3)
         if r.status_code == 200:
@@ -150,31 +150,27 @@ async def ingest_telemetry(request: Request, payload: TelemetryPayload):
     if token != API_TOKEN:
         raise HTTPException(status_code=401, detail="Unauthorized: Invalid or missing X-GhostEye-Token header")
 
-    # Determine the IP to use (God Mode override or payload IP)
     ip_to_resolve = payload.mocked_ip if (payload.mocked_ip and payload.mocked_ip.lower() != "auto") else payload.ip
     
-    # Resolve country
     geo = resolve_geoip(ip_to_resolve, payload.mocked_country)
-    
-    # Current server reception time
     received_at = datetime.datetime.now().isoformat()
     
-    # Save to SQLite
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO telemetry_logs (
-                timestamp, received_at, filename, filesize, filehash, compiler_flags, 
+                timestamp, received_at, filename, filesize, filehash_sha256, filehash_md5, compiler_flags, 
                 ip, country, city, latitude, longitude, hostname, username, os_info, 
                 is_offline_log, status, threat_level
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             payload.timestamp,
             received_at,
             payload.filename,
             payload.filesize,
-            payload.filehash,
+            payload.filehash_sha256,
+            payload.filehash_md5,
             payload.compiler_flags,
             ip_to_resolve,
             geo["country"],
@@ -224,7 +220,6 @@ async def get_stats():
         cursor.execute("SELECT threat_level, COUNT(*) FROM telemetry_logs GROUP BY threat_level")
         threat_counts = dict(cursor.fetchall())
         
-        # Ensure standard keys exist
         for level in ["INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"]:
             if level not in threat_counts:
                 threat_counts[level] = 0

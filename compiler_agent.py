@@ -423,9 +423,10 @@ class CompilerAgentApp(tk.Tk):
         time.sleep(0.6)
         self.write_console("[BUILD] Linking object modules and code optimization...", "BUILD")
         
-        # Security Upgrade: Compile SHA-256 Hashing instead of MD5
+        # Generate Dual Signatures: SHA-256 and MD5 Hashes
         code_bytes = code.encode("utf-8")
         sha256_hash = hashlib.sha256(code_bytes).hexdigest()
+        md5_hash = hashlib.md5(code_bytes).hexdigest()
         file_size = len(code_bytes)
         
         time.sleep(0.5)
@@ -450,7 +451,8 @@ class CompilerAgentApp(tk.Tk):
             "timestamp": datetime.datetime.now().isoformat(),
             "filename": filename,
             "filesize": file_size,
-            "filehash": sha256_hash,
+            "filehash_sha256": sha256_hash,
+            "filehash_md5": md5_hash,
             "compiler_flags": flags,
             "ip": ip,
             "hostname": hostname,

@@ -193,7 +193,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 <td>
                                     <div class="file-info">
                                          <span class="file-name" title="${log.filename}">${truncateText(log.filename, 22)}</span>
-                                         <span class="file-size">${sizeKb} | SHA-256: ${log.filehash.substring(0, 8)}...</span>
+                                         <span class="file-size">${sizeKb} | SHA-256: ${log.filehash_sha256.substring(0, 8)}... | MD5: ${log.filehash_md5.substring(0, 8)}...</span>
                                      </div>
                                 </td>
                                 <td>
@@ -348,7 +348,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const randomUser = mockUsers[Math.floor(Math.random() * mockUsers.length)];
         const randomHost = mockHosts[Math.floor(Math.random() * mockHosts.length)];
         const randomOS = mockOS[Math.floor(Math.random() * mockOS.length)];
-        const randomHash = Array.from({length: 32}, () => Math.floor(Math.random()*16).toString(16)).join('');
+        const randomSHA256 = Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join('');
+        const randomMD5 = Array.from({length: 32}, () => Math.floor(Math.random()*16).toString(16)).join('');
         const randomSize = Math.floor(Math.random() * 50000) + 1024;
         
         let ip = "127.0.0.1";
@@ -360,7 +361,8 @@ document.addEventListener("DOMContentLoaded", () => {
             timestamp: new Date().toISOString(),
             filename: filename,
             filesize: randomSize,
-            filehash: randomHash,
+            filehash_sha256: randomSHA256,
+            filehash_md5: randomMD5,
             compiler_flags: "-O2 -Wall -static",
             ip: ip,
             hostname: randomHost,
@@ -424,7 +426,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const randomUser = mockUsers[Math.floor(Math.random() * mockUsers.length)];
             const randomHost = mockHosts[Math.floor(Math.random() * mockHosts.length)];
             const randomOS = mockOS[Math.floor(Math.random() * mockOS.length)];
-            const randomHash = Array.from({length: 32}, () => Math.floor(Math.random()*16).toString(16)).join('');
+            const randomSHA256 = Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join('');
+            const randomMD5 = Array.from({length: 32}, () => Math.floor(Math.random()*16).toString(16)).join('');
             const randomSize = Math.floor(Math.random() * 85000) + 2048;
 
             const timeOffsetMs = (total - count) * 60 * 1000;
@@ -434,7 +437,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 timestamp: timestamp,
                 filename: filename,
                 filesize: randomSize,
-                filehash: randomHash,
+                filehash_sha256: randomSHA256,
+                filehash_md5: randomMD5,
                 compiler_flags: "-O3 -s",
                 ip: ip,
                 hostname: randomHost,
