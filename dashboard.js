@@ -192,9 +192,9 @@ document.addEventListener("DOMContentLoaded", () => {
                                 <td class="time-col">${timeStr} ${offlineTag}</td>
                                 <td>
                                     <div class="file-info">
-                                        <span class="file-name" title="${log.filename}">${truncateText(log.filename, 22)}</span>
-                                        <span class="file-size">${sizeKb} | MD5: ${log.filehash.substring(0, 8)}...</span>
-                                    </div>
+                                         <span class="file-name" title="${log.filename}">${truncateText(log.filename, 22)}</span>
+                                         <span class="file-size">${sizeKb} | SHA-256: ${log.filehash.substring(0, 8)}...</span>
+                                     </div>
                                 </td>
                                 <td>
                                     <div class="sys-info">
@@ -376,7 +376,10 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const res = await fetch("/api/telemetry", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { 
+                    "Content-Type": "application/json",
+                    "X-GhostEye-Token": "gho_secret_auth_token_2026"
+                },
                 body: JSON.stringify(payload)
             });
             if (res.ok) {
@@ -446,7 +449,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
             fetch("/api/telemetry", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { 
+                    "Content-Type": "application/json",
+                    "X-GhostEye-Token": "gho_secret_auth_token_2026"
+                },
                 body: JSON.stringify(payload)
             }).then(() => {
                 fetchStatsAndLogs();

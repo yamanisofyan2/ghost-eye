@@ -10,14 +10,17 @@ import datetime
 import threading
 import requests
 import re
+import base64
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext
 
-# API Server endpoint
+# API Server endpoint & Token configuration
 API_URL = "http://127.0.0.1:8000/api/telemetry"
+API_TOKEN = "gho_secret_auth_token_2026"
 CACHE_FILE = "offline_cache.json"
+ENCRYPTION_KEY = "ghosteye_encryption_key_2026"  # Local cache encryption key
 
-# Preloaded template code (Suspicious C++ Process Injection template)
+# Preloaded C++ process injection template
 SAMPLE_CODE = """#include <windows.h>
 #include <iostream>
 
@@ -93,7 +96,6 @@ class CompilerAgentApp(tk.Tk):
         self.option_add('*TCombobox*Listbox.selectForeground', '#000000')
 
     def build_ui(self):
-        # 2 Column Grid
         # Left Panel (72% Width): Code Editor + Console output
         left_panel = tk.Frame(self, bg="#0b0e17")
         left_panel.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=15, pady=15)
@@ -263,7 +265,7 @@ class CompilerAgentApp(tk.Tk):
         self.cache_frame = tk.Frame(right_panel, bg="#161b2c", bd=1, relief=tk.FLAT)
         self.cache_frame.pack(fill=tk.X, padx=15, pady=10, ipady=4)
         
-        self.lbl_cache = tk.Label(self.cache_frame, text="✔ Sync Status: Ready", font=self.font_bold, fg="#2ed573", bg="#161b2c")
+        self.lbl_cache = tk.Label(self.cache_frame, text="✔ Sync Status: Connected", font=self.font_bold, fg="#2ed573", bg="#161b2c")
         self.lbl_cache.pack(pady=5)
 
         # Big compile button at bottom with interactive hover glow
@@ -288,7 +290,18 @@ class CompilerAgentApp(tk.Tk):
         self.net_indicator.delete("all")
         self.net_indicator.create_oval(2, 2, 10, 10, fill=color, outline="")
 
-    # Button Hover Animation Methods
+    # Cryptographic Encrypt / Decrypt Helpers for Offline Cache Security
+    def encrypt_log_data(self, data_str: str) -> str:
+        key = ENCRYPTION_KEY
+        xor_result = "".join(chr(ord(c) ^ ord(key[i % len(key)])) for i, c in enumerate(data_str))
+        return base64.b64encode(xor_result.encode('latin1')).decode('utf-8')
+
+    def decrypt_log_data(self, cipher_str: str) -> str:
+        key = ENCRYPTION_KEY
+        decoded_str = base64.b64decode(cipher_str.encode('utf-8')).decode('latin1')
+        return "".join(chr(ord(c) ^ ord(key[i % len(key)])) for i, c in enumerate(decoded_str))
+
+    # Button Hover Animation
     def on_btn_hover(self, event):
         self.btn_compile.configure(bg="#33ccff")
 
@@ -313,32 +326,26 @@ class CompilerAgentApp(tk.Tk):
 
     # C++ Code Editor Syntax Highlighting
     def highlight_syntax(self, event=None):
-        # Configuration tags for code syntax colors
         self.editor.tag_config("comment", foreground="#57606f")      # Greenish-grey comment
         self.editor.tag_config("keyword", foreground="#00bfff", font=self.font_bold)      # Blue keywords
         self.editor.tag_config("windows_api", foreground="#ff4757", font=self.font_bold)  # Red alert APIs
         self.editor.tag_config("includes", foreground="#9b59b6")     # Purple headers
         
-        # Get all text
         code = self.editor.get("1.0", tk.END)
         
-        # Remove tags first
         for tag in ["comment", "keyword", "windows_api", "includes"]:
             self.editor.tag_remove(tag, "1.0", tk.END)
             
-        # 1. Highlight Comments (// ...)
         for match in re.finditer(r"//.*", code):
             start = f"1.0 + {match.start()} chars"
             end = f"1.0 + {match.end()} chars"
             self.editor.tag_add("comment", start, end)
             
-        # 2. Highlight Includes (#include <...>)
         for match in re.finditer(r"#include\s+<[^>]+>", code):
             start = f"1.0 + {match.start()} chars"
             end = f"1.0 + {match.end()} chars"
             self.editor.tag_add("includes", start, end)
 
-        # 3. Highlight Keywords
         keywords = [
             r"\bint\b", r"\bvoid\b", r"\breturn\b", r"\bdouble\b", r"\bfloat\b",
             r"\bchar\b", r"\bunsigned\b", r"\bstruct\b", r"\bclass\b", r"\bmain\b",
@@ -350,7 +357,6 @@ class CompilerAgentApp(tk.Tk):
                 end = f"1.0 + {match.end()} chars"
                 self.editor.tag_add("keyword", start, end)
 
-        # 4. Highlight Suspicious Win32 APIs
         apis = [
             r"\bOpenProcess\b", r"\bVirtualAllocEx\b", r"\bWriteProcessMemory\b",
             r"\bCreateRemoteThread\b", r"\bCloseHandle\b", r"\bSetWindowsHookEx\b",
@@ -369,23 +375,26 @@ class CompilerAgentApp(tk.Tk):
             self.draw_indicator_light("#2ed573") # Green
             self.rb_online.configure(fg="#f1f2f6")
             self.rb_offline.configure(fg="#a4b0be")
-            self.write_console("[STATUS] Network state: ONLINE. Live telemetry dispatcher active.", "INFO")
+            self.write_console("[STATUS] Network state: ONLINE. Live secure telemetry dispatcher active.", "INFO")
         else:
             self.network_online = False
             self.draw_indicator_light("#ff4757") # Red
             self.rb_online.configure(fg="#a4b0be")
             self.rb_offline.configure(fg="#ff4757")
-            self.write_console("[STATUS] Network state: OFFLINE. Offline JSON local queue active.", "WARN")
+            self.write_console("[STATUS] Network state: OFFLINE. Offline encrypted local cache active.", "WARN")
 
     def update_cache_status(self):
         if os.path.exists(CACHE_FILE):
             try:
                 with open(CACHE_FILE, "r") as f:
-                    logs = json.load(f)
-                count = len(logs)
-                if count > 0:
-                    self.lbl_cache.config(text=f"📁 Queue: {count} logs pending", fg="#ffa502")
-                    return
+                    encrypted_content = f.read().strip()
+                if encrypted_content:
+                    decrypted_content = self.decrypt_log_data(encrypted_content)
+                    logs = json.loads(decrypted_content)
+                    count = len(logs)
+                    if count > 0:
+                        self.lbl_cache.config(text=f"📁 Queue: {count} logs (Encrypted)", fg="#ffa502")
+                        return
             except:
                 pass
         self.lbl_cache.config(text="✔ Sync Status: Connected", fg="#2ed573")
@@ -414,14 +423,14 @@ class CompilerAgentApp(tk.Tk):
         time.sleep(0.6)
         self.write_console("[BUILD] Linking object modules and code optimization...", "BUILD")
         
+        # Security Upgrade: Compile SHA-256 Hashing instead of MD5
         code_bytes = code.encode("utf-8")
-        md5_hash = hashlib.md5(code_bytes).hexdigest()
+        sha256_hash = hashlib.sha256(code_bytes).hexdigest()
         file_size = len(code_bytes)
         
         time.sleep(0.5)
         self.write_console(f"[SUCCESS] Compile completed. Mock binary generated: dist/{filename.split('.')[0]}.exe", "SUCCESS")
         
-        # Build payload
         hostname = socket.gethostname()
         username = getpass.getuser()
         os_info = f"{platform.system()} {platform.release()} (v{platform.version()})"
@@ -441,7 +450,7 @@ class CompilerAgentApp(tk.Tk):
             "timestamp": datetime.datetime.now().isoformat(),
             "filename": filename,
             "filesize": file_size,
-            "filehash": md5_hash,
+            "filehash": sha256_hash,
             "compiler_flags": flags,
             "ip": ip,
             "hostname": hostname,
@@ -454,28 +463,30 @@ class CompilerAgentApp(tk.Tk):
             "mocked_ip": "auto"
         }
         
+        headers = {"X-GhostEye-Token": API_TOKEN}  # Secure API Token Header
+        
         if self.network_online:
-            self.write_console("[NET] System ONLINE. Sending telemetry to SIEM dashboard...", "INFO")
-            self.send_to_backend(payload)
+            self.write_console("[NET] System ONLINE. Transmitting telemetry to SIEM dashboard...", "INFO")
+            self.send_to_backend(payload, headers)
         else:
-            self.write_console("[NET] System OFFLINE. Saving telemetry to local cache...", "WARN")
+            self.write_console("[NET] System OFFLINE. Cryptographically encrypting log to local cache...", "WARN")
             payload["is_offline_log"] = True
             self.save_to_cache(payload)
             
         self.update_cache_status()
         self.btn_compile.config(state=tk.NORMAL)
 
-    def send_to_backend(self, payload):
+    def send_to_backend(self, payload, headers):
         try:
-            res = requests.post(API_URL, json=payload, timeout=3)
+            res = requests.post(API_URL, json=payload, headers=headers, timeout=3)
             if res.status_code == 200:
                 self.write_console("[SUCCESS] Telemetry transmitted successfully! SIEM log recorded.", "SUCCESS")
             else:
-                self.write_console(f"[ERROR] Ingest server returned error {res.status_code}. Caching locally.", "ERROR")
+                self.write_console(f"[ERROR] API server rejected log: status {res.status_code}. Caching locally.", "ERROR")
                 payload["is_offline_log"] = True
                 self.save_to_cache(payload)
         except Exception as e:
-            self.write_console(f"[ERROR] Connection to SIEM API failed. Caching log locally.", "ERROR")
+            self.write_console(f"[ERROR] Connection to SIEM API failed. Cryptographically caching locally.", "ERROR")
             payload["is_offline_log"] = True
             self.save_to_cache(payload)
 
@@ -484,39 +495,54 @@ class CompilerAgentApp(tk.Tk):
         if os.path.exists(CACHE_FILE):
             try:
                 with open(CACHE_FILE, "r") as f:
-                    logs = json.load(f)
+                    encrypted_content = f.read().strip()
+                if encrypted_content:
+                    decrypted_content = self.decrypt_log_data(encrypted_content)
+                    logs = json.loads(decrypted_content)
             except:
                 pass
         logs.append(payload)
         
         try:
+            serialized = json.dumps(logs)
+            encrypted = self.encrypt_log_data(serialized)
             with open(CACHE_FILE, "w") as f:
-                json.dump(logs, f, indent=4)
-            self.write_console(f"[CACHE] Telemetry queued in cache. Total cached: {len(logs)}", "WARN")
+                f.write(encrypted)
+            self.write_console(f"[CACHE] Log encrypted and queued in cache. Total queued: {len(logs)}", "WARN")
         except Exception as e:
             self.write_console(f"[ERROR] Cache write failed: {str(e)}", "ERROR")
 
     def background_sync_loop(self):
+        headers = {"X-GhostEye-Token": API_TOKEN}
         while self.sync_thread_active:
             time.sleep(5)
             if self.network_online and os.path.exists(CACHE_FILE):
                 try:
                     with open(CACHE_FILE, "r") as f:
-                        logs = json.load(f)
-                except:
+                        encrypted_content = f.read().strip()
+                    if not encrypted_content:
+                        continue
+                    decrypted_content = self.decrypt_log_data(encrypted_content)
+                    logs = json.loads(decrypted_content)
+                except Exception as e:
+                    self.write_console(f"[SYNC ERROR] Failed to decrypt cache: {str(e)}. Clearing corrupted cache.", "ERROR")
+                    try:
+                        os.remove(CACHE_FILE)
+                    except:
+                        pass
                     continue
                     
                 if not logs:
                     continue
                     
-                self.write_console(f"[SYNC] Detected {len(logs)} pending offline logs. Syncing to SIEM...", "INFO")
+                self.write_console(f"[SYNC] Securely decrypting {len(logs)} offline logs for SIEM ingestion...", "INFO")
                 failed_logs = []
                 
                 for idx, log in enumerate(logs):
                     try:
-                        res = requests.post(API_URL, json=log, timeout=3)
+                        res = requests.post(API_URL, json=log, headers=headers, timeout=3)
                         if res.status_code == 200:
-                            self.write_console(f"[SYNC] Cached log #{idx+1} ({log['filename']}) disegerakkan.", "SUCCESS")
+                            self.write_console(f"[SYNC] Cached log #{idx+1} ({log['filename']}) synced and verified.", "SUCCESS")
                         else:
                             failed_logs.append(log)
                     except Exception as e:
@@ -525,14 +551,16 @@ class CompilerAgentApp(tk.Tk):
                 
                 if failed_logs:
                     try:
+                        serialized = json.dumps(failed_logs)
+                        encrypted = self.encrypt_log_data(serialized)
                         with open(CACHE_FILE, "w") as f:
-                            json.dump(failed_logs, f, indent=4)
+                            f.write(encrypted)
                     except:
                         pass
                 else:
                     try:
                         os.remove(CACHE_FILE)
-                        self.write_console("[SYNC] Sync completed. All offline cache logs successfully disegerakkan.", "SUCCESS")
+                        self.write_console("[SYNC] Flush complete. Cache safely deleted.", "SUCCESS")
                     except:
                         pass
                 

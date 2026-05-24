@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 # Initialize FastAPI app
-app = FastAPI(title="SIEM Telemetry Ingestion API", version="1.0.0")
+app = FastAPI(title="GhostEye SIEM Telemetry Ingestion API", version="2.0.0")
 
 # Enable CORS for development
 app.add_middleware(
@@ -22,13 +22,14 @@ app.add_middleware(
 )
 
 DB_PATH = "telemetry.db"
+API_TOKEN = "gho_secret_auth_token_2026"  # Secure API token for authentication
 
 # Pydantic schema for Telemetry Payload
 class TelemetryPayload(BaseModel):
     timestamp: str  # ISO string or formatted local time of event
     filename: str
     filesize: int
-    filehash: str
+    filehash: str  # Stores SHA-256 hash (Security Upgrade)
     compiler_flags: str
     ip: str
     hostname: str
@@ -88,7 +89,6 @@ def resolve_geoip(ip_addr: str, mocked_country: Optional[str] = None) -> dict:
     # 1. Check if God Mode country is provided
     if mocked_country and mocked_country.lower() != "auto":
         result["country"] = mocked_country
-        # Provide representative lat/lon for common mock countries
         coordinates = {
             "Russia": {"city": "Moscow", "lat": 55.7558, "lon": 37.6173},
             "China": {"city": "Beijing", "lat": 39.9042, "lon": 116.4074},
@@ -106,7 +106,6 @@ def resolve_geoip(ip_addr: str, mocked_country: Optional[str] = None) -> dict:
     # 2. Skip local/private IP addresses
     private_prefixes = ["127.", "192.168.", "10.", "172.16.", "172.17.", "172.18.", "172.19.", "172.20.", "172.21.", "172.22.", "172.23.", "172.24.", "172.25.", "172.26.", "172.27.", "172.28.", "172.29.", "172.30.", "172.31."]
     if any(ip_addr.startswith(prefix) for prefix in private_prefixes) or ip_addr == "localhost":
-        # Check external IP of the backend server as fallback
         try:
             r = requests.get("https://ipapi.co/json/", timeout=2)
             if r.status_code == 200:
@@ -119,7 +118,6 @@ def resolve_geoip(ip_addr: str, mocked_country: Optional[str] = None) -> dict:
                 }
         except:
             pass
-        # Default local fallback
         return {
             "country": "Malaysia",
             "city": "Kuala Lumpur",
@@ -127,7 +125,7 @@ def resolve_geoip(ip_addr: str, mocked_country: Optional[str] = None) -> dict:
             "longitude": 101.6869
         }
 
-    # 3. Resolve using external GeoIP API (ip-api.com)
+    # 3. Resolve using external GeoIP API
     try:
         r = requests.get(f"http://ip-api.com/json/{ip_addr}", timeout=3)
         if r.status_code == 200:
@@ -144,9 +142,14 @@ def resolve_geoip(ip_addr: str, mocked_country: Optional[str] = None) -> dict:
         
     return result
 
-# Endpoint to ingest telemetry
+# Endpoint to ingest telemetry (with token authorization)
 @app.post("/api/telemetry")
-async def ingest_telemetry(payload: TelemetryPayload):
+async def ingest_telemetry(request: Request, payload: TelemetryPayload):
+    # Security Check: Verify API Token
+    token = request.headers.get("X-GhostEye-Token")
+    if token != API_TOKEN:
+        raise HTTPException(status_code=401, detail="Unauthorized: Invalid or missing X-GhostEye-Token header")
+
     # Determine the IP to use (God Mode override or payload IP)
     ip_to_resolve = payload.mocked_ip if (payload.mocked_ip and payload.mocked_ip.lower() != "auto") else payload.ip
     
@@ -187,7 +190,7 @@ async def ingest_telemetry(payload: TelemetryPayload):
         ))
         conn.commit()
         conn.close()
-        return {"status": "success", "message": "Telemetry received successfully"}
+        return {"status": "success", "message": "Telemetry received and authenticated successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database Insertion Error: {str(e)}")
 
@@ -237,7 +240,7 @@ async def get_stats():
             if stat not in status_counts:
                 status_counts[stat] = 0
 
-        # 5. Timeline of compiles (Last 10 entries to show in trend)
+        # 5. Timeline of compiles (Last 30 entries)
         cursor.execute("SELECT timestamp, country, threat_level FROM telemetry_logs ORDER BY timestamp DESC LIMIT 30")
         timeline = [{"timestamp": r[0], "country": r[1], "threat_level": r[2]} for r in cursor.fetchall()]
         
@@ -253,7 +256,7 @@ async def get_stats():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Endpoint to clear all logs (useful for reset / new demo run)
+# Endpoint to clear all logs
 @app.post("/api/reset")
 async def reset_db():
     try:
