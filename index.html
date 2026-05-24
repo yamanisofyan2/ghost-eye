@@ -40,7 +40,7 @@
                     <i class="fa-solid fa-code-commit"></i>
                 </div>
                 <div class="stat-content">
-                    <span class="stat-label">Jumlah Kompilasi</span>
+                    <span class="stat-label">Total Compilations</span>
                     <h2 class="stat-value" id="stats-total-compiles">0</h2>
                 </div>
             </div>
@@ -49,7 +49,7 @@
                     <i class="fa-solid fa-triangle-exclamation"></i>
                 </div>
                 <div class="stat-content">
-                    <span class="stat-label">Alert Critical & High</span>
+                    <span class="stat-label">Critical & High Alerts</span>
                     <h2 class="stat-value text-red" id="stats-critical-alerts">0</h2>
                 </div>
             </div>
@@ -58,7 +58,7 @@
                     <i class="fa-solid fa-earth-americas"></i>
                 </div>
                 <div class="stat-content">
-                    <span class="stat-label">Negara Dikesan</span>
+                    <span class="stat-label">Countries Detected</span>
                     <h2 class="stat-value" id="stats-active-countries">0</h2>
                 </div>
             </div>
@@ -67,7 +67,7 @@
                     <i class="fa-solid fa-cloud-arrow-down"></i>
                 </div>
                 <div class="stat-content">
-                    <span class="stat-label font-small">Log Disegerak (Offline)</span>
+                    <span class="stat-label font-small">Synced Logs (Offline)</span>
                     <h2 class="stat-value" id="stats-synced-logs">0</h2>
                 </div>
             </div>
@@ -82,7 +82,7 @@
                 <!-- Map Card -->
                 <div class="panel-card map-panel">
                     <div class="card-header">
-                        <h3><i class="fa-solid fa-map-location-dot"></i> Peta Telemetri Kompilasi Global (GeoIP)</h3>
+                        <h3><i class="fa-solid fa-map-location-dot"></i> Global Compilation Telemetry Map (GeoIP)</h3>
                         <span class="card-tag">Real-Time</span>
                     </div>
                     <div class="map-container-wrapper">
@@ -95,7 +95,7 @@
                     <!-- Threat Chart -->
                     <div class="panel-card chart-card">
                         <div class="card-header">
-                            <h3><i class="fa-solid fa-chart-pie"></i> Klasifikasi Ancaman</h3>
+                            <h3><i class="fa-solid fa-chart-pie"></i> Threat Classification</h3>
                         </div>
                         <div class="chart-container">
                             <canvas id="threatChart"></canvas>
@@ -105,7 +105,7 @@
                     <!-- Trend Chart -->
                     <div class="panel-card chart-card">
                         <div class="card-header">
-                            <h3><i class="fa-solid fa-chart-line"></i> Trend Aktiviti</h3>
+                            <h3><i class="fa-solid fa-chart-line"></i> Activity Trends</h3>
                         </div>
                         <div class="chart-container">
                             <canvas id="trendChart"></canvas>
@@ -124,13 +124,13 @@
                         <span class="card-tag gold-tag">GOD MODE</span>
                     </div>
                     <div class="card-body">
-                        <p class="god-desc">Gunakan panel ini untuk mensimulasikan telemetry kompilasi dari pelbagai pelusuk dunia secara serta-merta tanpa perlu menulis kod.</p>
+                        <p class="god-desc">Use this panel to instantly simulate compiler telemetry from various parts of the world without writing code.</p>
                         
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="god-country">Simulasi Negara</label>
+                                <label for="god-country">Simulate Country</label>
                                 <select id="god-country">
-                                    <option value="auto">Auto (Guna IP Sebenar)</option>
+                                    <option value="auto">Auto (Use Real IP)</option>
                                     <option value="Malaysia">Malaysia 🇲🇾</option>
                                     <option value="Russia">Russia 🇷🇺</option>
                                     <option value="China">China 🇨🇳</option>
@@ -142,24 +142,24 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label for="god-threat">Tahap Ancaman</label>
+                                <label for="god-threat">Threat Level</label>
                                 <select id="god-threat">
-                                    <option value="INFO">INFO (Biasa)</option>
+                                    <option value="INFO">INFO (Normal)</option>
                                     <option value="LOW">LOW</option>
                                     <option value="MEDIUM">MEDIUM</option>
-                                    <option value="HIGH">HIGH (Bahaya)</option>
-                                    <option value="CRITICAL">CRITICAL (Kritikal)</option>
+                                    <option value="HIGH">HIGH (Danger)</option>
+                                    <option value="CRITICAL">CRITICAL</option>
                                 </select>
                             </div>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="god-filename">Nama Fail Kod</label>
+                                <label for="god-filename">Source File Name</label>
                                 <input type="text" id="god-filename" value="malware_injector.cpp">
                             </div>
                             <div class="form-group">
-                                <label for="god-status">Status Kompilasi</label>
+                                <label for="god-status">Compilation Status</label>
                                 <select id="god-status">
                                     <option value="SUCCESS">SUCCESS</option>
                                     <option value="FAILED">FAILED</option>
@@ -169,16 +169,16 @@
 
                         <div class="btn-group">
                             <button id="btn-trigger-single" class="btn btn-primary">
-                                <i class="fa-solid fa-paper-plane"></i> Hantar Log Tunggal
+                                <i class="fa-solid fa-paper-plane"></i> Send Single Log
                             </button>
                             <button id="btn-trigger-bulk" class="btn btn-gold">
-                                <i class="fa-solid fa-bolt"></i> Simulasi Pukal (10 Log)
+                                <i class="fa-solid fa-bolt"></i> Bulk Simulation (10 Logs)
                             </button>
                         </div>
 
                         <div class="danger-zone">
                             <button id="btn-reset-db" class="btn btn-danger">
-                                <i class="fa-solid fa-trash-can"></i> Kosongkan Database SIEM
+                                <i class="fa-solid fa-trash-can"></i> Clear SIEM Database
                             </button>
                         </div>
                     </div>
@@ -187,26 +187,26 @@
                 <!-- Logs Feed Card -->
                 <div class="panel-card logs-panel">
                     <div class="card-header">
-                        <h3><i class="fa-solid fa-list-check"></i> Aliran Log Telemetri Terkini</h3>
+                        <h3><i class="fa-solid fa-list-check"></i> Recent Telemetry Logs Feed</h3>
                         <span class="refresh-indicator" id="refresh-indicator">
-                            <i class="fa-solid fa-arrows-rotate fa-spin"></i> Memantau...
+                            <i class="fa-solid fa-arrows-rotate fa-spin"></i> Monitoring...
                         </span>
                     </div>
                     <div class="logs-container">
                         <table class="logs-table">
                             <thead>
                                 <tr>
-                                    <th>Masa</th>
-                                    <th>Maklumat Fail</th>
-                                    <th>Sistem Pembina</th>
-                                    <th>IP / Negara</th>
-                                    <th>Ancaman</th>
+                                    <th>Timestamp</th>
+                                    <th>File Metadata</th>
+                                    <th>Build System</th>
+                                    <th>IP / Country</th>
+                                    <th>Threat</th>
                                 </tr>
                             </thead>
                             <tbody id="logs-tbody">
                                 <!-- Logs injected by JS -->
                                 <tr class="no-logs-row">
-                                    <td colspan="5" class="text-center">Tiada log diterima lagi. Klik Compile pada Ejen atau guna God Mode!</td>
+                                    <td colspan="5" class="text-center">No logs received yet. Click Compile on the Agent or use God Mode!</td>
                                 </tr>
                             </tbody>
                         </table>

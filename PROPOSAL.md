@@ -7,7 +7,7 @@
 
 ---
 
-## 📄 Executive Summary (Ringkasan Eksekutif)
+## 📄 Executive Summary
 
 Traditional detection mechanisms (such as EDR, Antivirus, and Sandbox analysis) operate downstream—analyzing compiled executables, installer packages, or running processes. At this post-compilation stage, advanced adversaries routinely bypass detection using obfuscators, packers, and crypters. 
 
@@ -15,7 +15,7 @@ Traditional detection mechanisms (such as EDR, Antivirus, and Sandbox analysis) 
 
 ---
 
-## 1. Problem Statement (Penyataan Masalah)
+## 1. Problem Statement
 
 1. **Delayed Detection ("Downstream Vulnerability"):** Most malware signatures and behaviors are only analyzed post-compilation. If a developer compiles a malicious payload or a compromised dependency on their local workstation, traditional security tools do not alert until execution or file scan, which is often too late.
 2. **Obfuscation and Anti-Analysis Bypass:** Threat actors easily bypass static EDR signature checks by packing or encrypting binaries immediately after compile time. By monitoring the build pipeline *during* code emission, the original source structure can be assessed.
@@ -24,7 +24,7 @@ Traditional detection mechanisms (such as EDR, Antivirus, and Sandbox analysis) 
 
 ---
 
-## 2. Project Objectives (Objektif Projek)
+## 2. Project Objectives
 
 * **Objective 1:** Design and develop a custom **Instrumented Compiler Agent (Mini-IDE)** that parses source code for suspicious Win32 API calls (e.g. process injection keywords like `VirtualAllocEx`, `WriteProcessMemory`, `CreateRemoteThread`) during compilation.
 * **Objective 2:** Implement a **Dual Cryptographic Signature Generator** producing both legacy **MD5** and collision-resistant **SHA-256** signatures of the code bytes to be stored in telemetry.

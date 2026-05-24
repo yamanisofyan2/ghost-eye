@@ -132,7 +132,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (logs.length === 0) {
                     tbody.innerHTML = `
                         <tr class="no-logs-row">
-                            <td colspan="5" class="text-center">Tiada log diterima lagi. Klik Compile pada Ejen atau guna God Mode!</td>
+                            <td colspan="5" class="text-center">No logs received yet. Click Compile on the Agent or use God Mode!</td>
                         </tr>
                     `;
                     markerGroup.clearLayers();
@@ -388,7 +388,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Refresh dashboard immediately
                 await fetchStatsAndLogs();
             } else {
-                alert("Gagal menghantar mock telemetry.");
+                alert("Failed to send mock telemetry.");
             }
         } catch (e) {
             console.error(e);
@@ -400,7 +400,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("btn-trigger-bulk").addEventListener("click", () => {
         const btn = document.getElementById("btn-trigger-bulk");
         btn.disabled = true;
-        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Mensimulasikan...`;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Simulating...`;
 
         let count = 0;
         const total = 10;
@@ -408,7 +408,7 @@ document.addEventListener("DOMContentLoaded", () => {
         function sendMockLog() {
             if (count >= total) {
                 btn.disabled = false;
-                btn.innerHTML = `<i class="fa-solid fa-bolt"></i> Simulasi Pukal (10 Log)`;
+                btn.innerHTML = `<i class="fa-solid fa-bolt"></i> Bulk Simulation (10 Logs)`;
                 return;
             }
 
@@ -474,13 +474,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Reset Database
     document.getElementById("btn-reset-db").addEventListener("click", async () => {
-        if (confirm("Adakah anda pasti mahu memadam semua log dalam database SIEM?")) {
+        if (confirm("Are you sure you want to clear all logs from the SIEM database?")) {
             try {
                 const res = await fetch("/api/reset", { method: "POST" });
                 if (res.ok) {
                     await fetchStatsAndLogs();
                 } else {
-                    alert("Gagal mengosongkan database.");
+                    alert("Failed to clear database.");
                 }
             } catch (e) {
                 alert("Error: " + e.message);
