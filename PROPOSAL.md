@@ -40,62 +40,72 @@ GhostEye utilizes a 3-tier architecture: the Client IDE Agent, the FastAPI Backe
 
 ```mermaid
 flowchart TD
-    subgraph Client ["GHOSTEYE COMPILER AGENT (Desktop IDE)"]
+    subgraph Client ["1. GHOSTEYE COMPILER AGENT (Desktop IDE Klien)"]
+        Login["Login Window<br>(Auth Username & Token)"]
         IDE["C++ Source Code Editor"]
-        Compiler["Instrumented Compiler Pipeline"]
-        HashGen["Signature Generator (SHA-256 & MD5)"]
-        NetState{"Network State Toggle?"}
+        StatusBar["Dynamic Status Bar<br>(Session, Host, Token, Connection Status)"]
+        
+        Compiler["Instrumented Compiler Pipeline<br>(Win32 API keyword scanner)"]
+        HashGen["Dual Hash Generator<br>(SHA-256 & MD5 signatures)"]
+        
+        NetState{"Network State?"}
         
         %% Online Path
-        OnlinePath["ONLINE PATHWAY (X-GhostEye-Token Auth)"]
+        OnlinePath["ONLINE PATHWAY<br>(X-GhostEye-Token Header)"]
         HTTPPost["HTTP POST /api/telemetry"]
         
         %% Offline Path
-        OfflinePath["OFFLINE PATHWAY (Local Caching)"]
-        EncryptXOR["XOR + Base64 Encryption"]
-        CacheFile[("offline_cache.json")]
-        SyncThread["Background Sync Thread (Auto-Sync on network restore)"]
+        OfflinePath["OFFLINE PATHWAY<br>(Local Resilient Cache)"]
+        EncryptXOR["XOR + Base64 Cipher Engine"]
+        CacheFile[("offline_cache.json<br>(Local Encrypted Queue)")]
+        SyncThread["Background Sync Thread<br>(Pings API & flushes cache when online)"]
 
-        IDE -->|Compile & Telemetry| Compiler
-        Compiler -->|Generate Dual Hashes| HashGen
+        Login -->|Unlock Editor| IDE
+        IDE -->|⚡ Compile & Telemetry| Compiler
+        IDE -.->|Display Status| StatusBar
+        Compiler -->|Extract Metadata & Hashing| HashGen
         HashGen --> NetState
         
-        %% Online Routing
+        %% Online
         NetState -->|Online Mode| OnlinePath
         OnlinePath --> HTTPPost
         
-        %% Offline Routing
+        %% Offline
         NetState -->|Offline Mode| OfflinePath
         OfflinePath --> EncryptXOR
         EncryptXOR --> CacheFile
-        SyncThread -.->|Pings API & Decrypts Cache| CacheFile
-        SyncThread -->|Transmits cached logs| HTTPPost
+        SyncThread -.->|Auto-ping connection| CacheFile
+        SyncThread -->|Push queued logs| HTTPPost
     end
 
-    subgraph Server ["GHOSTEYE TELEMETRY BACKEND (FastAPI API Gateway)"]
+    subgraph Server ["2. GHOSTEYE INGESTION BACKEND (FastAPI Gateway)"]
         API["FastAPI Routing Engine"]
-        TokenAuth{"X-GhostEye-Token Verification"}
-        GeoIP["GeoIP Resolver (ip-api.com & Fallback)"]
-        DB[(SQLite Database)]
+        TokenAuth{"X-GhostEye-Token valid?"}
+        GeoIP["GeoIP Resolver<br>(ip-api.com & Local Mock Fallback)"]
+        DB[(SQLite Database<br>telemetry.db)]
 
         HTTPPost --> API
         API --> TokenAuth
-        TokenAuth -->|Valid| GeoIP
-        TokenAuth -->|Invalid| HTTP401["HTTP 401 Unauthorized"]
+        TokenAuth -->|Valid Token| GeoIP
+        TokenAuth -->|Invalid Token| HTTP401["HTTP 401 Unauthorized"]
         GeoIP -->|Ingest Payload with MD5 + SHA-256| DB
     end
 
-    subgraph SIEM ["GHOSTEYE SOC Dashboard (Web UI)"]
-        Dashboard["SIEM Analytics Dashboard"]
-        LeafletMap["Leaflet.js Map (Auto-Fly Location)"]
-        Charts["Chart.js Indicators (Threats & Trends)"]
+    subgraph SIEM ["3. GHOSTEYE SOC DASHBOARD (SIEM Frontend Web UI)"]
+        Dashboard["SIEM Analytics Dashboard<br>(Neon Dark Glassmorphism Theme)"]
+        LangToggle["Bilingual Toggle Switch<br>(EN / BM dynamically cached in LocalStorage)"]
+        LeafletMap["Leaflet.js World Map<br>(Auto-flying focus and pop-up details)"]
+        Charts["Chart.js Indicators<br>(Threat classifying Doughnut & Line graph trends)"]
+        GodMode["God Mode Control Panel<br>(Single/Bulk spoof telemetry simulation)"]
         Poller["AJAX 2-second Poller"]
 
         Poller -->|Fetch Logs| API
-        API -->|JSON Telemetry Logs| Poller
-        Poller -->|Update Map Coordinates| LeafletMap
-        Poller -->|Update Visual Metrics| Charts
+        API -->|JSON Telemetry logs| Poller
         Dashboard --> Poller
+        Dashboard -.->|Languages| LangToggle
+        Dashboard -.->|Simulate logs| GodMode
+        Poller -->|Fly to & Open Bubble| LeafletMap
+        Poller -->|Update Trends| Charts
     end
 ```
 
