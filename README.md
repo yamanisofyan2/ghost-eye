@@ -84,6 +84,80 @@ flowchart TD
     end
 ```
 
+### 🗃️ Database Entity-Relationship Diagram (ERD)
+
+```mermaid
+erDiagram
+    TELEMETRY_LOGS {
+        int id PK "Auto-increment ID"
+        text timestamp "Compile event ISO-8601 UTC timestamp"
+        text received_at "Server ingestion ISO-8601 UTC timestamp"
+        text filename "Source code file compiled"
+        int filesize "Size in bytes"
+        text filehash_sha256 "SHA-256 hash representation"
+        text filehash_md5 "MD5 hash representation"
+        text compiler_flags "Active GCC/MSVC flags used"
+        text ip "Workstation external IP"
+        text country "Resolved country via GeoIP"
+        text city "Resolved city via GeoIP"
+        real latitude "Resolved coordinate latitude"
+        real longitude "Resolved coordinate longitude"
+        text hostname "Workstation host identifier"
+        text username "Active system developer username"
+        text os_info "OS version and processor architecture"
+        int is_offline_log "Boolean (0=Online Compile, 1=Cached Sync)"
+        text status "Compilation state (SUCCESS / FAILED)"
+        text threat_level "Calculated priority level (INFO / LOW / MEDIUM / HIGH / CRITICAL)"
+    }
+```
+
+### 🔄 System Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Developer as Developer Workstation
+    participant IDE as GhostEye Compiler Agent (Tkinter GUI)
+    participant Cache as Local Encrypted Cache (XOR + Base64)
+    participant API as FastAPI Ingestion Gateway
+    participant GeoIP as External GeoIP Service
+    participant DB as SQLite Database (telemetry.db)
+    participant SOC as SIEM SOC Dashboard
+
+    Developer->>IDE: Initiate Compilation (Press Build/Run)
+    IDE->>IDE: Scan source buffer for dangerous Win32 APIs
+    IDE->>IDE: Compute Dual Signatures (SHA-256 & MD5 hashes)
+    
+    alt Network Interface Online
+        IDE->>API: HTTP POST /api/telemetry (payload with X-GhostEye-Token)
+    else Network Interface Offline
+        IDE->>Cache: Encrypt payload using symmetric XOR + Base64
+        IDE->>Cache: Append to offline_cache.json
+        Note over IDE, Cache: Background Daemon thread polls connectivity status...
+        Cache-->>IDE: Connection restored, decrypt logs
+        IDE->>API: HTTP POST /api/telemetry (cached payloads with original timestamps)
+    end
+    
+    API->>API: Validate X-GhostEye-Token Header
+    alt Token Invalid
+        API-->>IDE: 401 Unauthorized Response
+    else Token Valid
+        API->>GeoIP: Fetch location data for client IP address
+        GeoIP-->>API: Return Country, City, Coordinates (Lat/Lon)
+        API->>DB: INSERT INTO telemetry_logs
+        DB-->>API: Log saved in SQLite
+        API-->>IDE: 200 OK Telemetry Log Ingested
+    end
+
+    loop Periodic Fetch (Every 2 Seconds)
+        SOC->>API: GET /api/logs
+        API->>DB: Query records (ORDER BY timestamp DESC)
+        DB-->>API: Return record list
+        API-->>SOC: JSON payload response
+        SOC->>SOC: Repaint Leaflet Map markers & recalculate Chart.js stats
+    end
+```
+
 ---
 
 ### 🔐 Security Architecture Details
