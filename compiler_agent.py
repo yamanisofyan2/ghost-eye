@@ -340,16 +340,6 @@ class CompilerAgentApp(tk.Tk):
         self.cb_country.pack(fill=tk.X, padx=15, pady=(2, 10))
         self.cb_country.set("auto")
         
-        # Threat level
-        tk.Label(right_panel, text="Inject Threat Level:", font=self.font_bold, bg="#111628", fg="#a4b0be").pack(anchor=tk.W, padx=15)
-        self.cb_threat = ttk.Combobox(
-            right_panel,
-            values=["INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"],
-            state="readonly"
-        )
-        self.cb_threat.pack(fill=tk.X, padx=15, pady=(2, 15))
-        self.cb_threat.set("HIGH")
-        
         # Cache Queue display card
         self.cache_frame = tk.Frame(right_panel, bg="#161b2c", bd=1, relief=tk.FLAT)
         self.cache_frame.pack(fill=tk.X, padx=15, pady=10, ipady=4)
@@ -554,7 +544,20 @@ class CompilerAgentApp(tk.Tk):
         except:
             pass
 
-        threat_level = self.cb_threat.get()
+        # Evaluate threat level dynamically based on code scanner results
+        num_triggers = len(suspicious_apis)
+        if num_triggers == 0:
+            threat_level = "INFO"
+        elif num_triggers == 1:
+            threat_level = "LOW"
+        elif num_triggers == 2:
+            threat_level = "MEDIUM"
+        elif num_triggers <= 4:
+            threat_level = "HIGH"
+        else:
+            threat_level = "CRITICAL"
+        
+        self.write_console(f"[ANALYSIS] Threat Assessment: {threat_level} ({num_triggers} API indicators matched)", "WARN" if num_triggers > 0 else "SUCCESS")
         country_spoof = self.cb_country.get()
         
         payload = {
