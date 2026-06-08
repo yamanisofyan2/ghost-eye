@@ -512,7 +512,7 @@ document.addEventListener("DOMContentLoaded", () => {
             "god-status": "Compilation Status",
             "btn-single": "Send Single Log",
             "btn-bulk": "Bulk Simulation (10 Logs)",
-            "btn-reset": "Clear SIEM Database",
+            "btn-reset": "Clear GhostEye Database",
             "table-title": "Recent Telemetry Logs Feed",
             "table-status": "Monitoring...",
             "th-time": "Timestamp",
@@ -523,7 +523,7 @@ document.addEventListener("DOMContentLoaded", () => {
             "no-logs": "No logs received yet. Click Compile on the Agent or use God Mode!",
             "alert-failed-send": "Failed to send mock telemetry.",
             "btn-bulk-simulating": "Simulating...",
-            "confirm-clear": "Are you sure you want to clear all logs from the SIEM database?",
+            "confirm-clear": "Are you sure you want to clear all logs from the GhostEye database?",
             "alert-failed-clear": "Failed to clear database.",
             "system-active": "SYSTEM ACTIVE"
         },
@@ -548,7 +548,7 @@ document.addEventListener("DOMContentLoaded", () => {
             "god-status": "Status Kompilasi",
             "btn-single": "Hantar Log Tunggal",
             "btn-bulk": "Simulasi Pukal (10 Log)",
-            "btn-reset": "Kosongkan Database SIEM",
+            "btn-reset": "Kosongkan Database GhostEye",
             "table-title": "Aliran Log Telemetri Terkini",
             "table-status": "Memantau...",
             "th-time": "Masa",
@@ -559,7 +559,7 @@ document.addEventListener("DOMContentLoaded", () => {
             "no-logs": "Tiada log diterima lagi. Klik Compile pada Ejen atau guna God Mode!",
             "alert-failed-send": "Gagal menghantar mock telemetry.",
             "btn-bulk-simulating": "Mensimulasikan...",
-            "confirm-clear": "Adakah anda pasti mahu memadam semua log dalam database SIEM?",
+            "confirm-clear": "Adakah anda pasti mahu memadam semua log dalam database GhostEye?",
             "alert-failed-clear": "Gagal mengosongkan database.",
             "system-active": "SISTEM AKTIF"
         }
