@@ -7,6 +7,15 @@ Whenever a developer compiles code, the GhostEye Compiler Agent intercepts the e
 
 ---
 
+## ⚠️ The Problem Statement
+
+Traditional security mechanisms (like EDR, Antivirus, and Sandbox analyzers) operate **downstream**—monitoring files *after* they are compiled, packaged, or executed. This leads to several security gaps:
+1. **The Downstream Detection Gap:** Threat actors bypass static EDR signature matching by encrypting or packing binaries immediately after compile time. By the time security tools analyze the binary, the original compilation footprint is hidden.
+2. **Lack of Local Build Auditing:** Modern security teams lack real-time visibility into what developers are compiling on local machines. An insider compiling a backdoored dependency or a compromised dev workstation can emit malicious payloads undetected.
+3. **Unreliable Offline Logging:** Standard threat loggers drop logs or crash when workstations lose network connection, or store local logs in plaintext on disk, risking data tampering and information leakage.
+
+---
+
 ## 🏗️ System Architecture & Workflow
 
 GhostEye operates with a decoupled client-server architecture containing dual signature compilation, resilient caching for offline states, token authorization, and real-time visualization.
