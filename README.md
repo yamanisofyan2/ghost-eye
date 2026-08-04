@@ -117,6 +117,10 @@ erDiagram
         int is_offline_log "Boolean (0=Online Compile, 1=Cached Sync)"
         text status "Compilation state (SUCCESS / FAILED)"
         text threat_level "Calculated priority level (INFO / LOW / MEDIUM / HIGH / CRITICAL)"
+        int lines_of_code "Total count of code buffer lines"
+        text cpu_arch "Processor architecture (e.g. AMD64)"
+        text mac_address "Workstation physical MAC address"
+        text suspicious_apis "Comma-separated list of triggered Win32 APIs"
     }
 ```
 

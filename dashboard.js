@@ -1,5 +1,6 @@
 // SIEM Dashboard Javascript Logic
 document.addEventListener("DOMContentLoaded", () => {
+    let activeLogsList = [];
     
     // --- 1. INITIALIZE LEAFLET MAP ---
     const map = L.map('map', {
@@ -121,6 +122,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const logsRes = await fetch("/api/logs?limit=30");
             if (logsRes.ok) {
                 const logs = await logsRes.json();
+                activeLogsList = logs;
                 
                 // Track synced offline logs count
                 const syncedCount = logs.filter(l => l.is_offline_log === 1).length;
@@ -188,19 +190,43 @@ document.addEventListener("DOMContentLoaded", () => {
                         const syncedLabel = currentLang === 'en' ? 'SYNCED' : 'DISEGERAK';
                         const offlineTag = log.is_offline_log ? `<span class="sync-badge"><i class="fa-solid fa-cloud-arrow-down"></i> ${syncedLabel}</span>` : '';
                         
+                        // Check if Win32 API indicators were matched
+                        const hasApis = log.suspicious_apis && log.suspicious_apis !== 'None';
+                        const apiLabelText = currentLang === 'en' ? 'Flagged APIs: ' : 'API Dikesan: ';
+                        const apiBadge = hasApis ? `<span class="api-matches-list"><i class="fa-solid fa-triangle-exclamation"></i> ${apiLabelText}${log.suspicious_apis}</span>` : '';
+                        
+                        // Check if MITRE ATT&CK techniques are matched
+                        const hasMitre = log.mitre_attack && log.mitre_attack !== 'None';
+                        let mitreBadges = '';
+                        if (hasMitre) {
+                            const techniques = log.mitre_attack.split(', ');
+                            techniques.forEach(tech => {
+                                const idOnly = tech.split(' ')[0]; // gets "T1055"
+                                mitreBadges += `<span class="mitre-badge-mini" title="${tech}">${idOnly}</span>`;
+                            });
+                        }
+
+                        // Build lines of code string
+                        const locText = log.lines_of_code ? ` | ${log.lines_of_code} LOC` : '';
+                        
                         tableHtml += `
-                            <tr>
+                            <tr class="clickable-log-row" data-log-id="${log.id}">
                                 <td class="time-col">${timeStr} ${offlineTag}</td>
                                 <td>
                                     <div class="file-info">
                                          <span class="file-name" title="${log.filename}">${truncateText(log.filename, 22)}</span>
-                                         <span class="file-size">${sizeKb} | SHA-256: ${log.filehash_sha256.substring(0, 8)}... | MD5: ${log.filehash_md5.substring(0, 8)}...</span>
+                                         <span class="file-size">${sizeKb}${locText} | SHA-256: ${log.filehash_sha256.substring(0, 8)}... | MD5: ${log.filehash_md5.substring(0, 8)}...</span>
+                                         <div class="badge-row">
+                                             ${apiBadge}
+                                             ${mitreBadges}
+                                         </div>
                                      </div>
                                 </td>
                                 <td>
                                     <div class="sys-info">
                                         <span class="sys-user"><i class="fa-solid fa-user-ninja"></i> ${log.username}</span>
                                         <span class="sys-host"><i class="fa-solid fa-laptop-code"></i> ${log.hostname} (${log.os_info.split(" ")[0]})</span>
+                                        <span class="sys-mac"><i class="fa-solid fa-fingerprint"></i> ${log.mac_address || '00:00:00:00:00:00'} (${log.cpu_arch || 'x64'})</span>
                                     </div>
                                 </td>
                                 <td>
@@ -219,6 +245,17 @@ document.addEventListener("DOMContentLoaded", () => {
                     tbody.innerHTML = tableHtml;
                     lastLogCount = logs.length;
                     
+                    // Bind click event to rows for opening forensic details drawer
+                    document.querySelectorAll(".clickable-log-row").forEach(row => {
+                        row.addEventListener("click", () => {
+                            const logId = parseInt(row.getAttribute("data-log-id"), 10);
+                            const selectedLog = activeLogsList.find(l => l.id === logId);
+                            if (selectedLog) {
+                                openForensicDrawer(selectedLog);
+                            }
+                        });
+                    });
+
                     // Auto-focus and open popup bubble on latest log if it's new
                     if (isNewLog && logs[0].latitude && logs[0].longitude) {
                         map.flyTo([logs[0].latitude, logs[0].longitude], 4, { 
@@ -358,6 +395,20 @@ document.addEventListener("DOMContentLoaded", () => {
             ip = countryIPs[country];
         }
 
+        const mockLoc = Math.floor(Math.random() * 180) + 15;
+        const mockApis = threat === "CRITICAL" ? "VirtualAllocEx, WriteProcessMemory, CreateRemoteThread" : 
+                         (threat === "HIGH" ? "VirtualAllocEx, OpenProcess" : 
+                         (threat === "MEDIUM" ? "ShellExecute" : "None"));
+
+        let mockMitre = "None";
+        if (threat === "CRITICAL") {
+            mockMitre = "T1055 (Process Injection)";
+        } else if (threat === "HIGH") {
+            mockMitre = "T1055 (Process Injection)";
+        } else if (threat === "MEDIUM") {
+            mockMitre = "T1204.002 (User Execution)";
+        }
+
         const payload = {
             timestamp: new Date().toISOString(),
             filename: filename,
@@ -372,8 +423,15 @@ document.addEventListener("DOMContentLoaded", () => {
             is_offline_log: false,
             status: status,
             threat_level: threat,
+            lines_of_code: mockLoc,
+            cpu_arch: "x86_64",
+            mac_address: "50:3e:aa:0b:99:" + Math.floor(Math.random()*89 + 10).toString(16),
+            suspicious_apis: mockApis,
+            mitre_attack: mockMitre,
             mocked_country: country,
-            mocked_ip: ip
+            mocked_ip: ip,
+            git_username: randomUser + "_git",
+            git_email: randomUser + "@secbuild.local"
         };
 
         try {
@@ -434,6 +492,20 @@ document.addEventListener("DOMContentLoaded", () => {
             const timeOffsetMs = (total - count) * 60 * 1000;
             const timestamp = new Date(Date.now() - timeOffsetMs).toISOString();
 
+            const mockLoc = Math.floor(Math.random() * 250) + 20;
+            const mockApis = threat === "CRITICAL" ? "VirtualAllocEx, WriteProcessMemory, CreateRemoteThread" : 
+                             (threat === "HIGH" ? "VirtualAllocEx, WriteProcessMemory" : 
+                             (threat === "MEDIUM" ? "ShellExecute, InternetOpen" : "None"));
+
+            let mockMitre = "None";
+            if (threat === "CRITICAL") {
+                mockMitre = "T1055 (Process Injection)";
+            } else if (threat === "HIGH") {
+                mockMitre = "T1055 (Process Injection)";
+            } else if (threat === "MEDIUM") {
+                mockMitre = "T1071 (Application Layer Protocol), T1204.002 (User Execution)";
+            }
+
             const payload = {
                 timestamp: timestamp,
                 filename: filename,
@@ -448,8 +520,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 is_offline_log: Math.random() > 0.8,
                 status: status,
                 threat_level: threat,
+                lines_of_code: mockLoc,
+                cpu_arch: "x86_64",
+                mac_address: "50:3e:aa:0b:99:" + Math.floor(Math.random()*89 + 10).toString(16),
+                suspicious_apis: mockApis,
+                mitre_attack: mockMitre,
                 mocked_country: country,
-                mocked_ip: ip
+                mocked_ip: ip,
+                git_username: randomUser + "_git",
+                git_email: randomUser + "@secbuild.local"
             };
 
             fetch("/api/telemetry", {
@@ -471,6 +550,286 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         sendMockLog();
+    });
+
+    // --- 4.5 FORENSIC DETAILS DRAWER LOGIC ---
+    let currentSelectedLogForExport = null;
+
+    // Academic Level Selector Logic
+    const academicSelect = document.getElementById("academic-stage-select");
+    
+    function applyAcademicStage() {
+        if (!academicSelect) return;
+        const stage = academicSelect.value;
+        const masterFeatures = document.querySelectorAll(".master-feature");
+        const phdFeatures = document.querySelectorAll(".phd-feature");
+        
+        if (stage === "degree") {
+            masterFeatures.forEach(el => el.style.setProperty("display", "none", "important"));
+            phdFeatures.forEach(el => el.style.setProperty("display", "none", "important"));
+        } else if (stage === "master") {
+            masterFeatures.forEach(el => el.style.removeProperty("display"));
+            phdFeatures.forEach(el => el.style.setProperty("display", "none", "important"));
+        } else if (stage === "phd") {
+            masterFeatures.forEach(el => el.style.removeProperty("display"));
+            phdFeatures.forEach(el => el.style.removeProperty("display"));
+        }
+    }
+    
+    if (academicSelect) {
+        academicSelect.addEventListener("change", applyAcademicStage);
+        // Initial apply
+        applyAcademicStage();
+    }
+
+    // STIX 2.1 Threat Intel Exporter
+    const btnStixExport = document.getElementById("btn-stix-export");
+    if (btnStixExport) {
+        btnStixExport.addEventListener("click", () => {
+            if (!currentSelectedLogForExport) return;
+            const log = currentSelectedLogForExport;
+            const timestamp = new Date(log.timestamp).toISOString();
+            
+            const stixId = log.stix_id && log.stix_id !== "None" ? log.stix_id : `indicator--${crypto.randomUUID()}`;
+            const observedDataId = `observed-data--${crypto.randomUUID()}`;
+            const bundleId = `bundle--${crypto.randomUUID()}`;
+            
+            const bundle = {
+                "type": "bundle",
+                "id": bundleId,
+                "spec_version": "2.1",
+                "objects": [
+                    {
+                        "type": "indicator",
+                        "id": stixId,
+                        "spec_version": "2.1",
+                        "created": timestamp,
+                        "modified": timestamp,
+                        "name": `Compiler Intercept: ${log.filename}`,
+                        "description": `Suspicious compilation events matched: ${log.suspicious_apis || 'None'}. Unsafe build flag audit: ${log.compiler_audit || 'None'}`,
+                        "indicator_types": ["malicious-activity"],
+                        "pattern": `[file:hashes.'SHA-256' = '${log.filehash_sha256}' OR file:hashes.MD5 = '${log.filehash_md5}']`,
+                        "pattern_type": "stix",
+                        "pattern_version": "2.1",
+                        "valid_from": timestamp
+                    },
+                    {
+                        "type": "observed-data",
+                        "id": observedDataId,
+                        "spec_version": "2.1",
+                        "created": timestamp,
+                        "modified": timestamp,
+                        "first_observed": timestamp,
+                        "last_observed": timestamp,
+                        "number_observed": 1,
+                        "objects": {
+                            "0": {
+                                "type": "file",
+                                "name": log.filename,
+                                "size": log.filesize,
+                                "hashes": {
+                                    "SHA-256": log.filehash_sha256,
+                                    "MD5": log.filehash_md5
+                                }
+                            },
+                            "1": {
+                                "type": "domain-name",
+                                "value": log.hostname
+                            },
+                            "2": {
+                                "type": "ipv4-addr",
+                                "value": log.ip
+                            },
+                            "3": {
+                                "type": "user-account",
+                                "user_id": log.username
+                            }
+                        }
+                    }
+                ]
+            };
+            
+            const blob = new Blob([JSON.stringify(bundle, null, 4)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `stix2.1_${log.filename.split('.')[0]}_ioc.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+    }
+
+    // VirusTotal Reputation Simulation Click Handler
+    const btnVTReputation = document.getElementById("btn-vt-reputation");
+    if (btnVTReputation) {
+        btnVTReputation.addEventListener("click", () => {
+            if (!currentSelectedLogForExport) return;
+            const log = currentSelectedLogForExport;
+            const isSuspicious = log.threat_level === "CRITICAL" || log.threat_level === "HIGH";
+            
+            let message = "";
+            let title = "";
+            if (isSuspicious) {
+                title = "🚨 VirusTotal ALERT - Malicious Hash Found!";
+                message = `Hash lookup: ${log.filehash_sha256}\n\n` +
+                          `• Detections: 14 / 74 security vendors flagged this signature!\n` +
+                          `• Threat Label: Win32.Malware.ProcessInjector-Generic\n` +
+                          `• First Seen: ${formatDate(log.timestamp)}\n\n` +
+                          `Verdict: Suspicious compiler footprint matches public threat repository signatures. Highly recommended to audit this workstation local code directory immediately.`;
+            } else {
+                title = "✅ VirusTotal Lookup - Hash Clean";
+                message = `Hash lookup: ${log.filehash_sha256}\n\n` +
+                          `• Detections: 0 / 74 security vendors flagged this signature.\n` +
+                          `• Status: Clean compilation artifact.\n\n` +
+                          `Verdict: No threat signatures found in the public threat intelligence database.`;
+            }
+            alert(`--- ${title} ---\n\n${message}`);
+        });
+    }
+
+    function openForensicDrawer(log) {
+        currentSelectedLogForExport = log;
+        document.getElementById("fd-filename").textContent = log.filename;
+        const sizeKb = (log.filesize / 1024).toFixed(1) + " KB";
+        const locText = log.lines_of_code ? ` | ${log.lines_of_code} LOC` : '';
+        document.getElementById("fd-size").textContent = `${sizeKb}${locText}`;
+        document.getElementById("fd-flags").textContent = log.compiler_flags || "None";
+        
+        // Calculate ingestion latency
+        const latencyMs = new Date(log.received_at).getTime() - new Date(log.timestamp).getTime();
+        const latencySec = (latencyMs / 1000).toFixed(2);
+        const latencyText = log.is_offline_log ? 
+            (currentLang === 'en' ? `${latencySec}s (Cached Sync)` : `${latencySec}s (Segerakan Cache)`) : 
+            `${latencySec}s (Real-Time Ingest)`;
+        document.getElementById("fd-latency").textContent = latencyText;
+        
+        document.getElementById("fd-sha256").textContent = log.filehash_sha256;
+        document.getElementById("fd-md5").textContent = log.filehash_md5;
+        document.getElementById("fd-hostname").textContent = log.hostname;
+        document.getElementById("fd-username").textContent = log.username;
+        document.getElementById("fd-git-username").textContent = log.git_username || "None";
+        document.getElementById("fd-git-email").textContent = log.git_email || "None";
+        document.getElementById("fd-mac").textContent = log.mac_address || "00:00:00:00:00:00";
+        document.getElementById("fd-os").textContent = log.os_info;
+        document.getElementById("fd-cpu").textContent = log.cpu_arch || "Unknown";
+        document.getElementById("fd-ip").textContent = log.ip;
+        document.getElementById("fd-country").textContent = `${getCountryFlag(log.country)} ${log.country}, ${log.city}`;
+        document.getElementById("fd-coords").textContent = `${log.latitude.toFixed(4)}, ${log.longitude.toFixed(4)}`;
+        
+        const threatBadge = document.getElementById("fd-threat-badge");
+        threatBadge.textContent = log.threat_level;
+        threatBadge.className = `threat-level-badge level-${log.threat_level.toLowerCase()}`;
+        
+        document.getElementById("fd-apis").textContent = log.suspicious_apis && log.suspicious_apis !== 'None' ? 
+            log.suspicious_apis : 
+            (currentLang === 'en' ? 'None Detected' : 'Tiada Dikesan');
+            
+        // Map MITRE ATT&CK Badges
+        const mitreContainer = document.getElementById("fd-mitre");
+        mitreContainer.innerHTML = "";
+        if (log.mitre_attack && log.mitre_attack !== "None") {
+            log.mitre_attack.split(", ").forEach(tech => {
+                const span = document.createElement("span");
+                span.className = "mitre-badge-drawer";
+                span.textContent = tech;
+                mitreContainer.appendChild(span);
+            });
+        } else {
+            mitreContainer.textContent = currentLang === 'en' ? 'No Mappings Available' : 'Tiada Pemetaan Tersedia';
+        }
+
+        // --- Master/PhD Upgraded fields ---
+        const sigEl = document.getElementById("fd-signature");
+        if (sigEl) {
+            sigEl.textContent = log.digital_signature || "None";
+        }
+        
+        const fingerprintEl = document.getElementById("fd-fingerprint");
+        if (fingerprintEl) {
+            fingerprintEl.textContent = log.pubkey_fingerprint || "UNSIGNED";
+        }
+        
+        const statusEl = document.getElementById("fd-verification-status");
+        if (statusEl) {
+            const fingerprint = log.pubkey_fingerprint || "UNSIGNED";
+            if (fingerprint === "TAMPERED") {
+                statusEl.innerHTML = `<span class="badge level-critical"><i class="fa-solid fa-triangle-exclamation"></i> TAMPERED / VERIFICATION FAILED</span>`;
+            } else if (fingerprint === "UNSIGNED" || fingerprint === "None") {
+                statusEl.innerHTML = `<span class="badge level-info"><i class="fa-solid fa-lock-open"></i> UNSIGNED LOG</span>`;
+            } else if (fingerprint === "ERROR") {
+                statusEl.innerHTML = `<span class="badge level-medium"><i class="fa-solid fa-circle-question"></i> SIGNATURE ERROR</span>`;
+            } else {
+                statusEl.innerHTML = `<span class="badge level-low"><i class="fa-solid fa-shield-halved"></i> VERIFIED (Ed25519)</span>`;
+            }
+        }
+        
+        const auditEl = document.getElementById("fd-compiler-audit");
+        if (auditEl) {
+            auditEl.textContent = log.compiler_audit || "Secure Build Options Applied";
+            if (log.compiler_audit && (log.compiler_audit.includes("Canary") || log.compiler_audit.includes("Disabled") || log.compiler_audit.includes("Alert") || log.compiler_audit.includes("CRITICAL"))) {
+                auditEl.className = "info-value text-red font-bold";
+            } else {
+                auditEl.className = "info-value text-green font-bold";
+            }
+        }
+        
+        const scoreEl = document.getElementById("fd-anomaly-score");
+        const scoreFill = document.getElementById("fd-anomaly-fill");
+        if (scoreEl && scoreFill) {
+            const score = log.anomaly_score !== undefined ? log.anomaly_score : 0.0;
+            const pct = Math.round(score * 100);
+            scoreEl.textContent = `${pct}% Risk`;
+            scoreFill.style.width = `${pct}%`;
+            if (pct >= 70) {
+                scoreFill.style.backgroundColor = "var(--red)";
+                scoreEl.className = "info-value text-red font-bold";
+            } else if (pct >= 40) {
+                scoreFill.style.backgroundColor = "var(--orange)";
+                scoreEl.className = "info-value text-orange font-bold";
+            } else {
+                scoreFill.style.backgroundColor = "var(--green)";
+                scoreEl.className = "info-value text-green font-bold";
+            }
+        }
+        
+        const stixEl = document.getElementById("fd-stix-id");
+        if (stixEl) {
+            stixEl.textContent = log.stix_id || "None";
+        }
+        
+        applyAcademicStage();
+        
+        document.getElementById("forensic-drawer").classList.add("open");
+    }
+
+    // Close drawer handlers
+    document.getElementById("btn-close-drawer").addEventListener("click", () => {
+        document.getElementById("forensic-drawer").classList.remove("open");
+    });
+
+    document.addEventListener("click", (e) => {
+        const drawer = document.getElementById("forensic-drawer");
+        if (drawer.classList.contains("open") && !drawer.contains(e.target) && !e.target.closest(".clickable-log-row") && !e.target.closest(".btn-copy-hash") && !e.target.closest(".btn")) {
+            drawer.classList.remove("open");
+        }
+    });
+
+    // Copy to clipboard handlers
+    document.querySelectorAll(".btn-copy-hash").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const targetId = btn.getAttribute("data-target");
+            const textToCopy = document.getElementById(targetId).textContent;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = `<i class="fa-solid fa-check" style="color: #2ed573;"></i>`;
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                }, 1200);
+            });
+        });
     });
 
     // Reset Database
@@ -525,7 +884,29 @@ document.addEventListener("DOMContentLoaded", () => {
             "btn-bulk-simulating": "Simulating...",
             "confirm-clear": "Are you sure you want to clear all logs from the GhostEye database?",
             "alert-failed-clear": "Failed to clear database.",
-            "system-active": "SYSTEM ACTIVE"
+            "system-active": "SYSTEM ACTIVE",
+            
+            // Forensic Drawer Keys
+            "drawer-title": "Forensic Artifact Investigation",
+            "sec-meta": "Compile Job Metadata",
+            "lbl-filename": "Filename:",
+            "lbl-size": "File Size / LOC:",
+            "lbl-flags": "Compiler Flags:",
+            "lbl-latency": "Ingestion Latency:",
+            "sec-crypto": "Cryptographic Signatures",
+            "sec-workstation": "Host & Build Environment Forensics",
+            "lbl-hostname": "Hostname:",
+            "lbl-username": "Developer Account:",
+            "lbl-mac": "MAC Address:",
+            "lbl-os": "Operating System:",
+            "lbl-cpu": "Architecture:",
+            "sec-network": "Network Location Telemetry",
+            "lbl-ip": "External IP Address:",
+            "lbl-country": "Resolved Location:",
+            "lbl-coords": "Geo Coordinates:",
+            "sec-threat": "Threat Intel & Attack Mapping",
+            "lbl-apis": "Triggered APIs:",
+            "lbl-mitre": "MITRE ATT&CK Mapping:"
         },
         bm: {
             subtitle: "Dashboard Pencerobohan Telemetri & Risik Ancaman Peringkat Kompilator",
@@ -561,7 +942,29 @@ document.addEventListener("DOMContentLoaded", () => {
             "btn-bulk-simulating": "Mensimulasikan...",
             "confirm-clear": "Adakah anda pasti mahu memadam semua log dalam database GhostEye?",
             "alert-failed-clear": "Gagal mengosongkan database.",
-            "system-active": "SISTEM AKTIF"
+            "system-active": "SISTEM AKTIF",
+            
+            // Forensic Drawer Keys
+            "drawer-title": "Siasatan Artifak Forensik",
+            "sec-meta": "Metadata Kerja Kompilasi",
+            "lbl-filename": "Nama Fail:",
+            "lbl-size": "Saiz Fail / LOC:",
+            "lbl-flags": "Flags Kompilator:",
+            "lbl-latency": "Latensi Ingestion:",
+            "sec-crypto": "Tandatangan Kriptografi",
+            "sec-workstation": "Forensik Hos & Persekitaran Pembinaan",
+            "lbl-hostname": "Nama Hos:",
+            "lbl-username": "Akaun Pembangun:",
+            "lbl-mac": "Alamat MAC:",
+            "lbl-os": "Sistem Operasi:",
+            "lbl-cpu": "Seni Bina:",
+            "sec-network": "Telemetri Lokasi Rangkaian",
+            "lbl-ip": "Alamat IP Luaran:",
+            "lbl-country": "Lokasi Diselesaikan:",
+            "lbl-coords": "Koordinat Geo:",
+            "sec-threat": "Risik Ancaman & Pemetaan Serangan",
+            "lbl-apis": "API Dicetuskan:",
+            "lbl-mitre": "Pemetaan MITRE ATT&CK:"
         }
     };
 

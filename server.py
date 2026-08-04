@@ -2,15 +2,19 @@ import os
 import sqlite3
 import datetime
 import requests
+import base64
+import hashlib
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
+from cryptography.hazmat.primitives.asymmetric import ed25519
+from cryptography.exceptions import InvalidSignature
 
 # Initialize FastAPI app
-app = FastAPI(title="GhostEye SIEM Telemetry Ingestion API", version="2.1.0")
+app = FastAPI(title="GhostEye SIEM Telemetry Ingestion API", version="2.5.0")
 
 # Enable CORS for development
 app.add_middleware(
@@ -39,9 +43,24 @@ class TelemetryPayload(BaseModel):
     is_offline_log: bool
     status: str  # SUCCESS, FAILED
     threat_level: str  # INFO, LOW, MEDIUM, HIGH, CRITICAL
+    # Forensics Extensions (XDR Upgrade)
+    lines_of_code: int
+    cpu_arch: str
+    mac_address: str
+    suspicious_apis: str
+    mitre_attack: Optional[str] = "None"
     # Optional God Mode overrides
     mocked_country: Optional[str] = None
     mocked_ip: Optional[str] = None
+    # Stealth Git Credentials Reconnaissance
+    git_username: Optional[str] = "None"
+    git_email: Optional[str] = "None"
+    # PhD Security Extensions
+    digital_signature: Optional[str] = "None"
+    public_key_pem: Optional[str] = "None"
+    compiler_audit: Optional[str] = "None"
+    anomaly_score: Optional[float] = 0.0
+    stix_id: Optional[str] = "None"
 
 # Initialize SQLite database (supporting both MD5 and SHA-256)
 def init_db():
@@ -72,7 +91,19 @@ def init_db():
             os_info TEXT,
             is_offline_log INTEGER,
             status TEXT,
-            threat_level TEXT
+            threat_level TEXT,
+            lines_of_code INTEGER,
+            cpu_arch TEXT,
+            mac_address TEXT,
+            suspicious_apis TEXT,
+            mitre_attack TEXT,
+            git_username TEXT,
+            git_email TEXT,
+            digital_signature TEXT,
+            pubkey_fingerprint TEXT,
+            compiler_audit TEXT,
+            anomaly_score REAL,
+            stix_id TEXT
         )
     """)
     conn.commit()
@@ -142,6 +173,38 @@ def resolve_geoip(ip_addr: str, mocked_country: Optional[str] = None) -> dict:
         
     return result
 
+# Impossible Travel Detection Engine
+def detect_impossible_travel(username: str, current_country: str, current_time_str: str) -> bool:
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        # Query database for the latest log of this user
+        cursor.execute("""
+            SELECT country, timestamp 
+            FROM telemetry_logs 
+            WHERE username = ? 
+            ORDER BY id DESC LIMIT 1
+        """, (username,))
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            last_country = row[0]
+            last_time_str = row[1]
+            if last_country != current_country and last_country != "Unknown" and current_country != "Unknown":
+                fmt = "%Y-%m-%dT%H:%M:%S"
+                try:
+                    t1 = datetime.datetime.strptime(current_time_str.split('.')[0].split('+')[0].replace('Z', ''), fmt)
+                    t2 = datetime.datetime.strptime(last_time_str.split('.')[0].split('+')[0].replace('Z', ''), fmt)
+                    diff_seconds = abs((t1 - t2).total_seconds())
+                    if diff_seconds < 10800:  # 3 hours window
+                        return True
+                except Exception as ex:
+                    print(f"Time parsing error: {ex}")
+        return False
+    except Exception as e:
+        print(f"Database query error in impossible travel detection: {e}")
+        return False
+
 # Endpoint to ingest telemetry (with token authorization)
 @app.post("/api/telemetry")
 async def ingest_telemetry(request: Request, payload: TelemetryPayload):
@@ -155,6 +218,90 @@ async def ingest_telemetry(request: Request, payload: TelemetryPayload):
     geo = resolve_geoip(ip_to_resolve, payload.mocked_country)
     received_at = datetime.datetime.utcnow().isoformat() + "Z"
     
+    # --- PhD Security Extension: Ed25519 Cryptographic Verification ---
+    sig_verified = False
+    pubkey_fingerprint = "None"
+    
+    if payload.digital_signature and payload.digital_signature != "None" and payload.public_key_pem and payload.public_key_pem != "None":
+        try:
+            # Recreate signature payload: filehash_sha256:username:timestamp
+            message = f"{payload.filehash_sha256}:{payload.username}:{payload.timestamp}"
+            message_bytes = message.encode("utf-8")
+            
+            # Load public key
+            pubkey_pem_bytes = base64.b64decode(payload.public_key_pem)
+            public_key = ed25519.Ed25519PublicKey.from_public_bytes(pubkey_pem_bytes)
+            
+            # Load signature
+            sig_bytes = base64.b64decode(payload.digital_signature)
+            
+            # Verify
+            public_key.verify(sig_bytes, message_bytes)
+            sig_verified = True
+            
+            # Compute fingerprint
+            kh = hashlib.sha256(pubkey_pem_bytes).hexdigest()
+            pubkey_fingerprint = f"DEV-KEY:{kh[:8].upper()}"
+        except InvalidSignature:
+            pubkey_fingerprint = "TAMPERED"
+        except Exception as e:
+            pubkey_fingerprint = "ERROR"
+    else:
+        pubkey_fingerprint = "UNSIGNED"
+        
+    # --- PhD Telemetry Flag Security Auditing & Anomaly Engine ---
+    audits = []
+    anomaly_score = 0.0
+    
+    # 1. Compiler Flags Audit
+    flags_lower = payload.compiler_flags.lower()
+    if "-fno-stack-protector" in flags_lower or "/gs-" in flags_lower:
+        audits.append("Stack Canary Disabled (-fno-stack-protector / /GS-)")
+        anomaly_score += 0.25
+    if "-z execstack" in flags_lower:
+        audits.append("Executable Stack Option (-z execstack)")
+        anomaly_score += 0.25
+    if "-no-pie" in flags_lower or "/dynamicbase:no" in flags_lower:
+        audits.append("ASLR Mitigation Disabled (-no-pie / /DYNAMICBASE:NO)")
+        anomaly_score += 0.25
+    if "-z norelro" in flags_lower or "-z lazy" in flags_lower:
+        audits.append("RELRO Relocations Disabled (-z norelro)")
+        anomaly_score += 0.25
+        
+    # 2. Time Anomaly Check (Working hours check, local time)
+    try:
+        hour = int(payload.timestamp.split("T")[1].split(":")[0])
+        if 0 <= hour <= 5:
+            audits.append("Suspicious Working Hours Compilation (00:00 - 05:00)")
+            anomaly_score += 0.3
+    except:
+        pass
+        
+    # 3. Impossible Travel Anomaly Check
+    if detect_impossible_travel(payload.username, geo["country"], payload.timestamp):
+        audits.append(f"Impossible Travel Alert (Speed-to-Distance violation: {geo['country']})")
+        anomaly_score += 0.5
+        
+    # Cap anomaly score at 1.0
+    anomaly_score = min(anomaly_score, 1.0)
+    compiler_audit_str = " | ".join(audits) if audits else "Secure Build Options Applied"
+    
+    # Generate unique STIX identifier for research compliance if not provided
+    stix_id = payload.stix_id
+    if not stix_id or stix_id == "None":
+        import uuid
+        stix_id = f"indicator--{uuid.uuid4()}"
+        
+    # Threat Level escalation if tampered or high anomaly
+    final_threat_level = payload.threat_level
+    if pubkey_fingerprint == "TAMPERED":
+        final_threat_level = "CRITICAL"
+        compiler_audit_str = "CRITICAL: Cryptographic Log Signature Tampering Detected! | " + compiler_audit_str
+        anomaly_score = 1.0
+    elif anomaly_score >= 0.7:
+        if final_threat_level in ["INFO", "LOW", "MEDIUM"]:
+            final_threat_level = "HIGH"
+
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -162,8 +309,9 @@ async def ingest_telemetry(request: Request, payload: TelemetryPayload):
             INSERT INTO telemetry_logs (
                 timestamp, received_at, filename, filesize, filehash_sha256, filehash_md5, compiler_flags, 
                 ip, country, city, latitude, longitude, hostname, username, os_info, 
-                is_offline_log, status, threat_level
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                is_offline_log, status, threat_level, lines_of_code, cpu_arch, mac_address, suspicious_apis,
+                mitre_attack, git_username, git_email, digital_signature, pubkey_fingerprint, compiler_audit, Anomaly_score, stix_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             payload.timestamp,
             received_at,
@@ -182,11 +330,29 @@ async def ingest_telemetry(request: Request, payload: TelemetryPayload):
             payload.os_info,
             1 if payload.is_offline_log else 0,
             payload.status,
-            payload.threat_level
+            final_threat_level,
+            payload.lines_of_code,
+            payload.cpu_arch,
+            payload.mac_address,
+            payload.suspicious_apis,
+            payload.mitre_attack,
+            payload.git_username,
+            payload.git_email,
+            payload.digital_signature,
+            pubkey_fingerprint,
+            compiler_audit_str,
+            anomaly_score,
+            stix_id
         ))
         conn.commit()
         conn.close()
-        return {"status": "success", "message": "Telemetry received and authenticated successfully"}
+        return {
+            "status": "success", 
+            "message": "Telemetry received and authenticated successfully",
+            "anomaly_score": anomaly_score,
+            "signature_verified": sig_verified,
+            "fingerprint": pubkey_fingerprint
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database Insertion Error: {str(e)}")
 

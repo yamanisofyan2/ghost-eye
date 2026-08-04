@@ -28,6 +28,14 @@
                 </div>
             </div>
             <div class="header-right">
+                <div class="academic-selector">
+                    <i class="fa-solid fa-graduation-cap text-cyan" style="margin-right: 5px;"></i>
+                    <select id="academic-stage-select" class="select-academic">
+                        <option value="degree">🎓 Degree Level</option>
+                        <option value="master">🎓 Master's Level</option>
+                        <option value="phd" selected>🎓 PhD Level</option>
+                    </select>
+                </div>
                 <button id="btn-lang-toggle" class="btn btn-lang">
                     <i class="fa-solid fa-language"></i> <span id="lang-label">English (EN)</span>
                 </button>
@@ -220,6 +228,171 @@
 
             </div>
 
+        </div>
+    </div>
+
+    <!-- Forensic Details Drawer -->
+    <div id="forensic-drawer" class="forensic-drawer">
+        <div class="drawer-header">
+            <h3><i class="fa-solid fa-microscope text-cyan"></i> <span data-i18n="drawer-title">Forensic Artifact Investigation</span></h3>
+            <button id="btn-close-drawer" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="drawer-body">
+            <div class="drawer-section">
+                <h4 data-i18n="sec-meta">Compile Job Metadata</h4>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label" data-i18n="lbl-filename">Filename:</span>
+                        <span class="info-value" id="fd-filename">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label" data-i18n="lbl-size">File Size / LOC:</span>
+                        <span class="info-value" id="fd-size">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label" data-i18n="lbl-flags">Compiler Flags:</span>
+                        <span class="info-value code-font" id="fd-flags">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label" data-i18n="lbl-latency">Ingestion Latency:</span>
+                        <span class="info-value" id="fd-latency">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="drawer-section">
+                <h4 data-i18n="sec-crypto">Cryptographic Signatures & Non-Repudiation</h4>
+                <div class="hash-box">
+                    <div class="hash-label">SHA-256:</div>
+                    <div class="hash-value-wrapper">
+                        <span class="hash-value code-font" id="fd-sha256">-</span>
+                        <button class="btn-copy-hash" data-target="fd-sha256"><i class="fa-regular fa-copy"></i></button>
+                    </div>
+                </div>
+                <div class="hash-box">
+                    <div class="hash-label">MD5:</div>
+                    <div class="hash-value-wrapper">
+                        <span class="hash-value code-font" id="fd-md5">-</span>
+                        <button class="btn-copy-hash" data-target="fd-md5"><i class="fa-regular fa-copy"></i></button>
+                    </div>
+                </div>
+                <div class="hash-box master-feature">
+                    <div class="hash-label">Ed25519 Digital Signature:</div>
+                    <div class="hash-value-wrapper">
+                        <span class="hash-value code-font" id="fd-signature">-</span>
+                        <button class="btn-copy-hash" data-target="fd-signature"><i class="fa-regular fa-copy"></i></button>
+                    </div>
+                </div>
+                <div class="info-grid master-feature" style="margin-top: 10px;">
+                    <div class="info-item">
+                        <span class="info-label">Key Fingerprint:</span>
+                        <span class="info-value text-cyan" id="fd-fingerprint">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Verification Status:</span>
+                        <span id="fd-verification-status">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="drawer-section phd-feature">
+                <h4 data-i18n="sec-phd-analytics">Deep Code Auditing & Anomaly Metrics [PhD Level]</h4>
+                <div class="info-grid">
+                    <div class="info-item-block" style="grid-column: span 2;">
+                        <span class="info-label">Compiler Safety Violations:</span>
+                        <div class="info-value text-orange font-bold" id="fd-compiler-audit" style="margin-top: 5px;">-</div>
+                    </div>
+                    <div class="info-item" style="margin-top: 10px;">
+                        <span class="info-label">Anomaly Risk Score:</span>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
+                            <span class="info-value font-bold" id="fd-anomaly-score">-</span>
+                            <div class="anomaly-meter-bg" style="width: 100px; height: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; overflow: hidden;">
+                                <div id="fd-anomaly-fill" style="width: 0%; height: 100%; background: var(--cyan);"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="info-item" style="margin-top: 10px;">
+                        <span class="info-label">STIX 2.1 Ref:</span>
+                        <span class="info-value code-font" id="fd-stix-id">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="drawer-section drawer-actions" style="display: flex; gap: 10px; margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                <button id="btn-stix-export" class="btn btn-primary master-feature" style="flex: 1; padding: 10px; cursor: pointer;">
+                    <i class="fa-solid fa-file-export"></i> Export STIX 2.1 Intel
+                </button>
+                <button id="btn-vt-reputation" class="btn btn-gold phd-feature" style="flex: 1; padding: 10px; cursor: pointer;">
+                    <i class="fa-solid fa-shield-virus"></i> Query VirusTotal Reputation
+                </button>
+            </div>
+
+            <div class="drawer-section">
+                <h4 data-i18n="sec-workstation">Host & Build Environment Forensics</h4>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label" data-i18n="lbl-hostname">Hostname:</span>
+                        <span class="info-value" id="fd-hostname">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label" data-i18n="lbl-username">Developer Account:</span>
+                        <span class="info-value text-cyan" id="fd-username">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Git Username:</span>
+                        <span class="info-value text-cyan" id="fd-git-username">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Git Email:</span>
+                        <span class="info-value text-cyan" id="fd-git-email">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label" data-i18n="lbl-mac">MAC Address:</span>
+                        <span class="info-value code-font" id="fd-mac">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label" data-i18n="lbl-os">Operating System:</span>
+                        <span class="info-value" id="fd-os">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label" data-i18n="lbl-cpu">Architecture:</span>
+                        <span class="info-value" id="fd-cpu">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="drawer-section">
+                <h4 data-i18n="sec-network">Network Location Telemetry</h4>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label" data-i18n="lbl-ip">External IP Address:</span>
+                        <span class="info-value code-font" id="fd-ip">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label" data-i18n="lbl-country">Resolved Location:</span>
+                        <span class="info-value" id="fd-country">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label" data-i18n="lbl-coords">Geo Coordinates:</span>
+                        <span class="info-value" id="fd-coords">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="drawer-section">
+                <h4 data-i18n="sec-threat">Threat Intel & Attack Mapping</h4>
+                <div class="threat-info-block">
+                    <div class="threat-level-badge" id="fd-threat-badge">-</div>
+                    <div class="info-item-block">
+                        <span class="info-label" data-i18n="lbl-apis">Triggered APIs:</span>
+                        <div class="info-value text-red" id="fd-apis">-</div>
+                    </div>
+                    <div class="info-item-block">
+                        <span class="info-label" data-i18n="lbl-mitre">MITRE ATT&CK Mapping:</span>
+                        <div class="mitre-list" id="fd-mitre">-</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
